@@ -5,6 +5,8 @@ import {
   getCurrentUser,
   getAllPlaylists,
   getAllArtists,
+  getPlaylistById,
+  getArtistById,
 } from "./api/main.js";
 
 // Auth Modal Functionality
@@ -370,6 +372,11 @@ document.addEventListener("DOMContentLoaded", function () {
 // Other functionality
 document.addEventListener("DOMContentLoaded", async function () {
   //   Render all playlists
+  const hitsSection = document.querySelector(".hits-section");
+  const artistsSection = document.querySelector(".artists-section");
+  const artistHero = document.querySelector(".artist-hero");
+  const artistControls = document.querySelector(".artist-controls");
+  const popularSection = document.querySelector(".popular-section");
   const hitsGrid = document.querySelector(".hits-grid");
   const { playlists } = await getAllPlaylists();
   const artistsGrid = document.querySelector(".artists-grid");
@@ -377,7 +384,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const hitsGridHtml = playlists
     .map((playlist) => {
       return `
-      <div class="hit-card">
+      <div data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
           <img
             src="${playlist.image_url}"
@@ -417,4 +424,38 @@ document.addEventListener("DOMContentLoaded", async function () {
     })
     .join("");
   artistsGrid.innerHTML = artistsGridHtml;
+
+  // select a card to render UI hero
+  const hitsCards = document.querySelectorAll(".hit-card");
+  hitsCards.forEach((card) => {
+    card.addEventListener("click", async () => {
+      const playlist = await getPlaylistById(card.dataset.id);
+      hitsSection.classList.add("hidden");
+      artistsSection.classList.add("hidden");
+      artistHero.classList.add("show");
+      artistControls.classList.add("show");
+      popularSection.classList.add("show");
+
+      const artistHeroHtml = `
+      <div class="hero-background">
+        <img
+          src="${playlist.image_url}"
+          alt="${playlist.description}"
+          class="hero-image"
+        />
+        <div class="hero-overlay"></div>
+      </div>
+      <div class="hero-content">
+        <div class="verified-badge">
+          <i class="fas fa-check-circle"></i>
+          <span>Public playlist</span>
+        </div>
+        <h1 class="artist-name">${playlist.name}</h1>
+        <p class="monthly-listeners">1,021,833 monthly listeners</p>
+      </div>
+      `;
+
+      artistHero.innerHTML = artistHeroHtml;
+    });
+  });
 });

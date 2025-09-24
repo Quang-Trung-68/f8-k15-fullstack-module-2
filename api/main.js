@@ -17,6 +17,12 @@ const getCurrentUser = async () => {
 };
 
 // playlists
+
+const getPlaylistById = async (playlistId) => {
+  const response = await api.get(`playlists/${playlistId}`);
+  return response.data;
+};
+
 const getAllPlaylists = async () => {
   const response = await api.get("playlists?limit=20&offset=0");
   return response.data;
@@ -29,10 +35,17 @@ const getAllArtists = async () => {
   return response.data;
 };
 
+const getArtistById = async (artistId) => {
+  const response = await api.get(`artists/${artistId}`);
+  return response.data;
+};
+
 export {
   registerApi,
   loginApi,
   getCurrentUser,
   getAllPlaylists,
   getAllArtists,
+  getPlaylistById,
+  getArtistById,
 };

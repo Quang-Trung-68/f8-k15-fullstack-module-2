@@ -245,6 +245,31 @@
   overflow-y: auto;
 }
 
+/* playlist section */
+
+.hits-section.hidden {
+  display: none;
+}
+
+/* artist section */
+
+.artists-section.hidden {
+  display: none;
+}
+
+/* ui playlist/artist */
+.artist-hero.show,
+.artist-controls.show,
+.popular-section.show {
+  display: block;
+}
+
+.artist-hero,
+.artist-controls,
+.popular-section {
+  display: none;
+}
+
 /* Player */
 .player {
   grid-area: player;
