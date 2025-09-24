@@ -16,4 +16,23 @@ const getCurrentUser = async () => {
   return response.data;
 };
 
-export { registerApi, loginApi, getCurrentUser };
+// playlists
+const getAllPlaylists = async () => {
+  const response = await api.get("playlists?limit=20&offset=0");
+  return response.data;
+};
+
+// artists
+
+const getAllArtists = async () => {
+  const response = await api.get("artists?limit=20&offset=0");
+  return response.data;
+};
+
+export {
+  registerApi,
+  loginApi,
+  getCurrentUser,
+  getAllPlaylists,
+  getAllArtists,
+};

@@ -1,5 +1,11 @@
 // Call api
-import { registerApi, loginApi, getCurrentUser } from "./api/main.js";
+import {
+  registerApi,
+  loginApi,
+  getCurrentUser,
+  getAllPlaylists,
+  getAllArtists,
+} from "./api/main.js";
 
 // Auth Modal Functionality
 document.addEventListener("DOMContentLoaded", async function () {
@@ -13,6 +19,23 @@ document.addEventListener("DOMContentLoaded", async function () {
   const showLoginBtn = document.getElementById("showLogin");
   const showSignupBtn = document.getElementById("showSignup");
   const actionButtons = document.querySelector(".auth-buttons");
+  const sortBtn = document.querySelector(".sort-btn");
+  const sortByTable = document.querySelector(".sort-by-table");
+  const searchLibraryBtn = document.querySelector(".search-library-btn");
+  const searchLibraryInput = document.querySelector(".search-library-input");
+  const navTabPlaylists = document.querySelector(".nav-tab-playlists");
+  const navTabArtists = document.querySelector(".nav-tab-artists");
+  let sortByPlaylist = localStorage.getItem("sortByPlaylist");
+  const menuPlaylist = document.getElementById("menuPlaylist");
+  const menuArtist = document.getElementById("menuArtist");
+
+  if (!sortByPlaylist || sortByPlaylist === "true") {
+    navTabPlaylists.classList.add("active");
+    navTabArtists.classList.remove("active");
+  } else {
+    navTabPlaylists.classList.remove("active");
+    navTabArtists.classList.add("active");
+  }
 
   // Function to show signup form
   function showSignupForm() {
@@ -205,6 +228,101 @@ document.addEventListener("DOMContentLoaded", async function () {
       throw error;
     }
   });
+
+  // Search library
+
+  // Bấm nút search -> hiện/ẩn ô input
+  searchLibraryBtn.addEventListener("click", (e) => {
+    e.stopPropagation(); // tránh click lan ra ngoài
+    searchLibraryInput.classList.toggle("show");
+    if (searchLibraryInput.classList.contains("show")) {
+      searchLibraryInput.focus(); // tự động focus khi hiện
+    }
+  });
+
+  // Nếu click ra ngoài thì ẩn input
+  document.addEventListener("click", (e) => {
+    if (
+      !searchLibraryInput.contains(e.target) &&
+      !searchLibraryBtn.contains(e.target)
+    ) {
+      searchLibraryInput.classList.remove("show");
+    }
+  });
+
+  // Bắt sự kiện Enter trong ô input
+  searchLibraryInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      console.log(searchLibraryInput.value);
+    }
+  });
+
+  // Sort by button
+  sortBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    sortByTable.classList.toggle("show");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!sortByTable.contains(e.target) && !sortBtn.contains(e.target)) {
+      sortByTable.classList.remove("show");
+    }
+  });
+
+  navTabPlaylists.addEventListener("click", () => {
+    navTabArtists.classList.remove("active");
+    navTabPlaylists.classList.add("active");
+    sortByPlaylist = true;
+    localStorage.setItem("sortByPlaylist", true);
+  });
+
+  navTabArtists.addEventListener("click", () => {
+    navTabPlaylists.classList.remove("active");
+    navTabArtists.classList.add("active");
+    sortByPlaylist = false;
+    localStorage.setItem("sortByPlaylist", false);
+  });
+
+  // Custom context menu
+  // Ẩn tất cả menu
+  function hideMenus() {
+    menuPlaylist.style.display = "none";
+    menuArtist.style.display = "none";
+  }
+
+  // Lắng nghe chuột phải trên các item
+  document.querySelectorAll(".library-item").forEach((item) => {
+    item.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      hideMenus();
+
+      let menu;
+      if (item.classList.contains("library-item-playlist")) {
+        menu = menuPlaylist;
+      } else if (item.classList.contains("library-item-artist")) {
+        menu = menuArtist;
+      }
+
+      if (menu) {
+        menu.style.display = "block";
+        menu.style.left = `${e.pageX}px`;
+        menu.style.top = `${e.pageY}px`;
+      }
+    });
+  });
+
+  // Click ra ngoài ẩn menu
+  document.addEventListener("click", () => hideMenus());
+
+  // Click vào item menu
+  [menuPlaylist, menuArtist].forEach((menu) => {
+    menu.addEventListener("click", (e) => {
+      if (e.target.tagName === "DIV") {
+        alert(`Bạn chọn: ${e.target.innerText}`);
+        hideMenus();
+      }
+    });
+  });
 });
 
 // User Menu Dropdown Functionality
@@ -251,5 +369,52 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Other functionality
 document.addEventListener("DOMContentLoaded", async function () {
-  //   First load
+  //   Render all playlists
+  const hitsGrid = document.querySelector(".hits-grid");
+  const { playlists } = await getAllPlaylists();
+  const artistsGrid = document.querySelector(".artists-grid");
+  const { artists } = await getAllArtists();
+  const hitsGridHtml = playlists
+    .map((playlist) => {
+      return `
+      <div class="hit-card">
+        <div class="hit-card-cover">
+          <img
+            src="${playlist.image_url}"
+            alt="${playlist.description}"
+          />
+          <button class="hit-play-btn">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+        <div class="hit-card-info">
+          <h3 class="hit-card-title">${playlist.name}</h3>
+          <p class="hit-card-artist">${playlist.user_display_name}</p>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+  hitsGrid.innerHTML = hitsGridHtml;
+
+  //  Render all artists
+  const artistsGridHtml = artists
+    .map((artist) => {
+      return `
+       <div class="artist-card">
+        <div class="artist-card-cover">
+          <img src="${artist.image_url}" alt="${artist.bio}" />
+          <button class="artist-play-btn">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+        <div class="artist-card-info">
+          <h3 class="artist-card-name">${artist.name}</h3>
+          <p class="artist-card-type">${artist.bio}</p>
+        </div>
+      </div>
+    `;
+    })
+    .join("");
+  artistsGrid.innerHTML = artistsGridHtml;
 });

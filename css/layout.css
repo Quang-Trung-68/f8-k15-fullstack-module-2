@@ -57,10 +57,148 @@
   margin-bottom: var(--spacing-md);
 }
 
+.search-library {
+  position: relative;
+}
+
+.search-library-container {
+  position: relative;
+  display: inline-block;
+}
+
+.search-library-input {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  display: none; /* ẩn mặc định */
+  margin-left: 10px;
+}
+
+.search-library-input.show {
+  display: inline-block; /* hiện khi có class */
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    /* transform: scaleX(0.5); */
+    transform: translateX(-5%);
+  }
+  to {
+    opacity: 1;
+    /* transform: scaleX(1); */
+    transform: translateX(0%);
+  }
+}
+
+.search-btn {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 6px;
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+.sort-by-table {
+  background-color: #535353;
+  display: flex;
+  gap: 5px;
+  flex-direction: column;
+  align-items: stretch;
+  width: 60%;
+  border-radius: 4px;
+  padding: 3px;
+  position: absolute;
+  top: 110%;
+  left: 40%;
+  display: none;
+}
+
+.sort-by-table.show {
+  display: block;
+}
+
+.sort-by-table-title {
+  font-size: 0.8rem;
+}
+
+.sort-by-btn {
+  color: #fff;
+  padding: 10px;
+  text-align: start;
+  width: 100%;
+}
+
+.sort-by-btn:hover {
+  background-color: #111;
+}
+
 .library-content {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+}
+
+/* custom context menu */
+.library-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.library-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 6px;
+  cursor: context-menu;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+/* context menu chung */
+.context-menu {
+  position: absolute;
+  background: #535353;
+  border-radius: 4px;
+  padding: 3px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 180px;
+  display: none;
+  z-index: 1000;
+  font-size: 0.8rem;
+}
+
+.context-menu div {
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.context-menu div i {
+  color: #ccc;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.context-menu div:hover {
+  background: #ccc;
+  color: black;
 }
 
 /* Main Content */
@@ -172,6 +310,38 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.tooltip-container {
+  position: relative; /* cần cho tooltip định vị dựa vào button */
+  display: inline-block;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 100px;
+  background-color: #535353;
+  color: #fff;
+  text-align: center;
+  padding: 3px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  /* định vị tooltip */
+  position: absolute;
+  bottom: 110%; /* xuất hiện phía trên button */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+
+  /* hiệu ứng mượt */
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* hover vào container thì hiện tooltip */
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
 }
 
 .progress-container {

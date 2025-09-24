@@ -35,22 +35,61 @@
           </div>
 
           <div class="nav-tabs">
-            <button class="nav-tab active">Playlists</button>
-            <button class="nav-tab">Artists</button>
+            <button class="nav-tab nav-tab-playlists">Playlists</button>
+            <button class="nav-tab nav-tab-artists">Artists</button>
           </div>
 
           <div class="search-library">
-            <button class="search-library-btn">
-              <i class="fas fa-search"></i>
-            </button>
-            <button class="sort-btn">
-              Recents
-              <i class="fas fa-list"></i>
-            </button>
+            <div class="search-library-container">
+              <button class="search-library-btn">
+                <i class="fas fa-search"></i>
+              </button>
+              <input
+                type="text"
+                class="search-library-input"
+                id="searchLibraryInput"
+                placeholder="Nhập từ khóa..."
+              />
+            </div>
+            <div class="sort-search-library">
+              <button class="sort-btn">
+                Recents
+                <i class="fas fa-list"></i>
+              </button>
+              <div class="sort-by-table">
+                <div class="sort-by-table-title">Sort by</div>
+                <button class="sort-by-btn sort-by-recents">Recents</button>
+                <button class="sort-by-btn sort-by-recently-added">
+                  Recently Added
+                </button>
+                <button class="sort-by-btn sort-by-recents-alphabetical">
+                  Alphabetical
+                </button>
+                <button class="sort-by-btn sort-by-creator">Creator</button>
+              </div>
+            </div>
           </div>
 
           <div class="library-content">
-            <div class="library-item active">
+            <!-- custom context -->
+            <!-- Context menu playlist -->
+            <div class="context-menu" id="menuPlaylist">
+              <div class="context-menu-remove">
+                <i class="fas fa-user-slash"></i>Remove from profile
+              </div>
+              <div class="context-menu-delete">
+                <i class="fas fa-trash"></i>Delete
+              </div>
+            </div>
+
+            <!-- Context menu artist -->
+            <div class="context-menu" id="menuArtist">
+              <div class="context-menu-unfollow">
+                <i class="fas fa-user-times"></i>Unfollow
+              </div>
+            </div>
+
+            <div class="library-item library-item-playlist active">
               <div class="item-icon liked-songs">
                 <i class="fas fa-heart"></i>
               </div>
@@ -63,7 +102,7 @@
               </div>
             </div>
 
-            <div class="library-item">
+            <div class="library-item library-item-artist">
               <img
                 src="placeholder.svg?height=48&width=48"
                 alt="Đen"
@@ -452,21 +491,36 @@
 
         <div class="player-center">
           <div class="player-controls">
-            <button class="control-btn active">
-              <i class="fas fa-random"></i>
-            </button>
-            <button class="control-btn">
-              <i class="fas fa-step-backward"></i>
-            </button>
-            <button class="control-btn play-btn">
-              <i class="fas fa-pause"></i>
-            </button>
-            <button class="control-btn">
-              <i class="fas fa-step-forward"></i>
-            </button>
-            <button class="control-btn">
-              <i class="fas fa-redo"></i>
-            </button>
+            <div class="tooltip-container">
+              <button class="control-btn active">
+                <i class="fas fa-random"></i>
+              </button>
+              <span class="tooltip-text">Enable shuffle</span>
+            </div>
+            <div class="tooltip-container">
+              <button class="control-btn">
+                <i class="fas fa-step-backward"></i>
+              </button>
+              <span class="tooltip-text">Previous</span>
+            </div>
+            <div class="tooltip-container">
+              <button class="control-btn play-btn">
+                <i class="fas fa-pause"></i>
+              </button>
+              <span class="tooltip-text">Play</span>
+            </div>
+            <div class="tooltip-container">
+              <button class="control-btn">
+                <i class="fas fa-step-forward"></i>
+              </button>
+              <span class="tooltip-text">Next</span>
+            </div>
+            <div class="tooltip-container">
+              <button class="control-btn">
+                <i class="fas fa-redo"></i>
+              </button>
+              <span class="tooltip-text">Repeat</span>
+            </div>
           </div>
           <div class="progress-container">
             <span class="time">0:52</span>
