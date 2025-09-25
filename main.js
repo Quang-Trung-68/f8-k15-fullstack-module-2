@@ -12,6 +12,8 @@ import {
   followPlaylist,
   unfollowPlaylist,
   createPlaylist,
+  uploadPlaylistCover,
+  updatePlaylist,
 } from "./api/main.js";
 
 // Auth Modal Functionality
@@ -450,6 +452,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const { playlist } = await createPlaylist();
       const playlistTitle = document.querySelector(".playlist-title");
       playlistTitle.textContent = playlist.name;
+      playlistTitle.dataset.id = playlist.id;
     } catch (error) {
       console.log(error);
       throw error;
@@ -461,7 +464,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const modal = document.querySelector(".modal");
   const closeBtn = document.querySelector(".modal-close");
 
-  // Giả sử bạn có DOM element tên và ảnh của playlist
+  //
   const playlistTitle = document.querySelector(".playlist-title");
   const playlistImage = document.querySelector(".playlist-cover");
 
@@ -479,6 +482,71 @@ document.addEventListener("DOMContentLoaded", async function () {
   playlistImage.addEventListener("click", openModal);
   overlay.addEventListener("click", closeModal);
   closeBtn.addEventListener("click", closeModal);
+
+  // upload image to get url image
+  const saveBtn = document.querySelector(".btn-save");
+  let urlPlaylistCoverImage = null;
+  const playlistName = document.querySelector(".playlist-name");
+  const playlistDesc = document.querySelector(".playlist-desc");
+  const fileInputPlaylistCover = document.querySelector(
+    "#fileInputPlaylistCover"
+  );
+  const coverPreviewImage = document.querySelector(".cover-preview-image");
+  const playlistCoverImage = document.querySelector(".playlist-cover-image");
+  coverPreviewImage.addEventListener("click", async () => {
+    fileInputPlaylistCover.click();
+  });
+  // trigger event when change data in input
+  fileInputPlaylistCover.addEventListener("change", async () => {
+    const file = fileInputPlaylistCover.files[0];
+    if (file) {
+      // Preview ảnh
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        coverPreviewImage.src = e.target.result;
+        playlistCoverImage.src = e.target.result;
+        coverPreviewImage.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+
+      // Chuẩn bị dữ liệu FormData
+      const formData = new FormData();
+      formData.append("cover", file); // backend sẽ nhận với key "image"
+
+      try {
+        const response = await uploadPlaylistCover(
+          playlistTitle.dataset.id,
+          formData
+        );
+        urlPlaylistCoverImage = response.file.url;
+        console.log(response);
+      } catch (error) {
+        console.error("Upload error:", error);
+      }
+    }
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    const playlistUpdateData = {
+      name: playlistName.value,
+      description: playlistDesc.value,
+      image_url: urlPlaylistCoverImage,
+    };
+    try {
+      const response = await updatePlaylist(
+        playlistTitle.dataset.id,
+        playlistUpdateData
+      );
+      console.log(response);
+      const playlist = await getPlaylistById(playlistTitle.dataset.id);
+      playlistTitle.textContent = playlist.name;
+      playlistTitle.dataset.id = playlist.id;
+    } catch (error) {
+      throw error;
+    } finally {
+      closeModal();
+    }
+  });
 
   logoIcon.addEventListener("click", () => {
     showUIPopular(false);

@@ -64,7 +64,7 @@ const unfollowPlaylist = async (playlistId) => {
   return response.data;
 };
 
-// create playlist
+// playlist
 
 const createPlaylist = async () => {
   const response = await api.post(`playlists`, {
@@ -73,6 +73,26 @@ const createPlaylist = async () => {
     is_public: true,
     image_url: "https://example.com/playlist-cover.jpg",
   });
+  return response.data;
+};
+
+const updatePlaylist = async (playlistId, playlistData) => {
+  const response = await api.put(`playlists/${playlistId}`, playlistData);
+  return response.data;
+};
+
+// UPLOAD
+// upload image playlist cover
+const uploadPlaylistCover = async (playlistId, formData) => {
+  const response = await api.post(
+    `upload/playlist/${playlistId}/cover`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
   return response.data;
 };
 
@@ -89,4 +109,6 @@ export {
   followPlaylist,
   unfollowPlaylist,
   createPlaylist,
+  uploadPlaylistCover,
+  updatePlaylist,
 };

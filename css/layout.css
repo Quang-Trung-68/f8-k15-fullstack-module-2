@@ -451,11 +451,17 @@
   cursor: pointer;
 }
 
+.cover-preview {
+  display: flex;
+  justify-content: center;
+}
+
 .cover-preview img {
   width: 120px;
   height: 120px;
   object-fit: cover;
   border-radius: 4px;
+  margin-top: 15px;
   margin-bottom: 15px;
 }
 
@@ -483,6 +489,26 @@
   margin-top: 5px;
   border-radius: 4px;
   border: none;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: end;
+}
+
+.modal-footer .btn-save {
+  width: 120px;
+  height: 40px;
+  font-size: 1rem;
+  color: #fff;
+  border-radius: 3px;
+  background-color: #535353;
+  transition: 0.3s ease;
+}
+
+.modal-footer .btn-save:hover {
+  background-color: #1db954;
+  color: #000;
 }
 
 /* Player */
