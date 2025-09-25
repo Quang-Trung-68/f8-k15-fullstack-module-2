@@ -52,6 +52,30 @@ const getArtistPopularTracks = async (artistId) => {
   return response.data;
 };
 
+// follow playlist/unfollow
+
+const followPlaylist = async (playlistId) => {
+  const response = await api.post(`playlists/${playlistId}/follow`);
+  return response.data;
+};
+
+const unfollowPlaylist = async (playlistId) => {
+  const response = await api.delete(`playlists/${playlistId}/follow`);
+  return response.data;
+};
+
+// create playlist
+
+const createPlaylist = async () => {
+  const response = await api.post(`playlists`, {
+    name: "My New Playlist",
+    description: "Playlist description",
+    is_public: true,
+    image_url: "https://example.com/playlist-cover.jpg",
+  });
+  return response.data;
+};
+
 export {
   registerApi,
   loginApi,
@@ -62,4 +86,7 @@ export {
   getArtistById,
   getTrackByPlaylist,
   getArtistPopularTracks,
+  followPlaylist,
+  unfollowPlaylist,
+  createPlaylist,
 };

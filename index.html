@@ -469,6 +469,84 @@
               </div>
             </div>
           </section>
+
+          <!-- Create Playlist -->
+          <section class="create-playlist">
+            <div class="playlist-hero">
+              <div class="playlist-cover">
+                <img
+                  src="https://via.placeholder.com/200x200.png?text=Cover"
+                  alt="Playlist cover"
+                />
+              </div>
+              <div class="playlist-info">
+                <span class="playlist-type">Public Playlist</span>
+                <h1 class="playlist-title">My Playlist #4</h1>
+                <p class="playlist-owner">Trung</p>
+                <button class="follow-btn">Follow</button>
+              </div>
+            </div>
+
+            <div class="playlist-body">
+              <div class="playlist-actions">
+                <span class="view-type">List ▾</span>
+              </div>
+
+              <div class="playlist-empty">
+                <p>Let's find something for your playlist</p>
+                <input
+                  type="text"
+                  class="search-input"
+                  placeholder="Search for songs or episodes"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- Modal edits playlist -->
+          <section class="edit-playlist">
+            <!-- Overlay -->
+            <div class="overlay hidden"></div>
+
+            <!-- Modal -->
+            <div class="modal hidden">
+              <div class="modal-header">
+                <h2>Edit details</h2>
+                <button class="modal-close">&times;</button>
+              </div>
+
+              <div class="modal-body">
+                <div class="cover-preview">
+                  <img
+                    src="https://example.com/playlist-cover.jpg"
+                    alt="Playlist Cover"
+                  />
+                </div>
+                <div class="form-fields">
+                  <label>
+                    Name
+                    <input
+                      type="text"
+                      class="playlist-name"
+                      value="My New Playlist"
+                    />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      class="playlist-desc"
+                      placeholder="Add an optional description"
+                      rows="6"
+                    ></textarea>
+                  </label>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn-save">Save</button>
+              </div>
+            </div>
+          </section>
         </div>
       </main>
 

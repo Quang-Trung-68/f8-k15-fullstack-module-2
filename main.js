@@ -9,6 +9,9 @@ import {
   getArtistById,
   getTrackByPlaylist,
   getArtistPopularTracks,
+  followPlaylist,
+  unfollowPlaylist,
+  createPlaylist,
 } from "./api/main.js";
 
 // Auth Modal Functionality
@@ -400,6 +403,8 @@ document.addEventListener("DOMContentLoaded", async function () {
   const artistHero = document.querySelector(".artist-hero");
   const artistControls = document.querySelector(".artist-controls");
   const popularSection = document.querySelector(".popular-section");
+  const createPlaylistSection = document.querySelector(".create-playlist");
+  const createPlaylistBtn = document.querySelector(".create-btn");
   const hitsGrid = document.querySelector(".hits-grid");
   const { playlists } = await getAllPlaylists();
   const artistsGrid = document.querySelector(".artists-grid");
@@ -424,14 +429,67 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   };
 
+  const showUICreatePlaylist = (isShow) => {
+    if (isShow) {
+      hitsSection.classList.add("hidden");
+      artistsSection.classList.add("hidden");
+      artistHero.classList.remove("show");
+      artistControls.classList.remove("show");
+      popularSection.classList.remove("show");
+      createPlaylistSection.classList.add("show");
+    } else {
+      createPlaylistSection.classList.remove("show");
+    }
+  };
+
+  // create my playlist
+  createPlaylistBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+      showUICreatePlaylist(true);
+      const { playlist } = await createPlaylist();
+      const playlistTitle = document.querySelector(".playlist-title");
+      playlistTitle.textContent = playlist.name;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  });
+
+  // modal edits playlist
+  const overlay = document.querySelector(".overlay");
+  const modal = document.querySelector(".modal");
+  const closeBtn = document.querySelector(".modal-close");
+
+  // Giả sử bạn có DOM element tên và ảnh của playlist
+  const playlistTitle = document.querySelector(".playlist-title");
+  const playlistImage = document.querySelector(".playlist-cover");
+
+  function openModal() {
+    overlay.classList.remove("hidden");
+    modal.classList.remove("hidden");
+  }
+
+  function closeModal() {
+    overlay.classList.add("hidden");
+    modal.classList.add("hidden");
+  }
+
+  playlistTitle.addEventListener("click", openModal);
+  playlistImage.addEventListener("click", openModal);
+  overlay.addEventListener("click", closeModal);
+  closeBtn.addEventListener("click", closeModal);
+
   logoIcon.addEventListener("click", () => {
     showUIPopular(false);
+    showUICreatePlaylist(false);
   });
 
   homeButton.addEventListener("click", () => {
     showUIPopular(false);
+    showUICreatePlaylist(false);
   });
-
+  // render all playlist
   const hitsGridHtml = playlists
     .map((playlist) => {
       return `
@@ -484,23 +542,42 @@ document.addEventListener("DOMContentLoaded", async function () {
       showUIPopular(true);
 
       const artistHeroHtml = `
-      <div class="hero-background">
-        <img
-          src="${playlist.image_url}"
-          alt="${playlist.description}"
-          class="hero-image"
-        />
-        <div class="hero-overlay"></div>
-      </div>
-      <div class="hero-content">
-        <div class="verified-badge">
-          <span>Public playlist - ${playlist.description}</span>
+        <div class="hero-background">
+          <img
+            src="${playlist.image_url}"
+            alt="${playlist.description}"
+            class="hero-image"
+          />
+          <div class="hero-overlay"></div>
         </div>
-        <h1 class="artist-name">${playlist.name}</h1>
-        <p class="monthly-listeners">1,021,833 monthly listeners</p>
-      </div>
-      `;
+        <div class="hero-content" data-id="${playlist.id}">
+          <div class="verified-badge">
+            <span>Public playlist - ${playlist.description}</span>
+          </div>
+          <h1 class="artist-name">${playlist.name}</h1>
+          <p class="monthly-listeners">1,021,833 monthly listeners</p>
+          <button class="follow-btn">${
+            playlist.is_following ? "Unfollow" : "Follow"
+          }</button>
+        </div>
+        `;
 
+      document.addEventListener("click", async (e) => {
+        if (e.target.classList.contains("follow-btn")) {
+          const btn = e.target;
+          const playlistId = btn.closest(".hero-content").dataset.id;
+
+          if (btn.textContent === "Follow") {
+            btn.textContent = "Unfollow";
+            // Gọi API follow
+            await followPlaylist(playlistId);
+          } else {
+            btn.textContent = "Follow";
+            // Gọi API unfollow
+            await unfollowPlaylist(playlistId);
+          }
+        }
+      });
       artistHero.innerHTML = artistHeroHtml;
       const { tracks } = await getTrackByPlaylist(playlist.id);
       if (tracks.length === 0) {
