@@ -1,4 +1,4 @@
-// Call api
+// Import các API functions
 import {
   registerApi,
   loginApi,
@@ -16,9 +16,9 @@ import {
   updatePlaylist,
 } from "./api/main.js";
 
-// Auth Modal Functionality
+// Xử lý Auth Modal và các chức năng chính
 document.addEventListener("DOMContentLoaded", async function () {
-  // Get DOM elements
+  // Lấy tất cả DOM elements cần thiết
   const signupBtn = document.querySelector(".signup-btn");
   const loginBtn = document.querySelector(".login-btn");
   const authModal = document.getElementById("authModal");
@@ -34,10 +34,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   const searchLibraryInput = document.querySelector(".search-library-input");
   const navTabPlaylists = document.querySelector(".nav-tab-playlists");
   const navTabArtists = document.querySelector(".nav-tab-artists");
-  let sortByPlaylist = localStorage.getItem("sortByPlaylist");
   const menuPlaylist = document.getElementById("menuPlaylist");
   const menuArtist = document.getElementById("menuArtist");
 
+  // Lấy trạng thái sort từ localStorage, mặc định là playlist
+  let sortByPlaylist = localStorage.getItem("sortByPlaylist");
+
+  // Cập nhật UI tabs dựa trên trạng thái sort
   if (!sortByPlaylist || sortByPlaylist === "true") {
     navTabPlaylists.classList.add("active");
     navTabArtists.classList.remove("active");
@@ -46,101 +49,103 @@ document.addEventListener("DOMContentLoaded", async function () {
     navTabArtists.classList.add("active");
   }
 
-  // Function to show signup form
+  // Hiển thị form đăng ký
   function showSignupForm() {
     signupForm.style.display = "block";
     loginForm.style.display = "none";
   }
 
-  // Function to show login form
+  // Hiển thị form đăng nhập
   function showLoginForm() {
     signupForm.style.display = "none";
     loginForm.style.display = "block";
   }
 
-  // Function to open modal
+  // Mở modal auth
   function openModal() {
     authModal.classList.add("show");
-    document.body.style.overflow = "hidden"; // Prevent background scrolling
+    document.body.style.overflow = "hidden"; // Ngăn scroll background
   }
 
-  // Open modal with Sign Up form when clicking Sign Up button
+  // Đóng modal auth
+  function closeModal() {
+    authModal.classList.remove("show");
+    document.body.style.overflow = "auto"; // Cho phép scroll lại
+  }
+
+  // Event listeners cho các nút mở modal
   signupBtn.addEventListener("click", function () {
     showSignupForm();
     openModal();
   });
 
-  // Open modal with Login form when clicking Login button
   loginBtn.addEventListener("click", function () {
     showLoginForm();
     openModal();
   });
 
-  // Close modal function
-  function closeModal() {
-    authModal.classList.remove("show");
-    document.body.style.overflow = "auto"; // Restore scrolling
-  }
-
-  // Close modal when clicking close button
+  // Event listeners đóng modal
   modalClose.addEventListener("click", closeModal);
 
-  // Close modal when clicking overlay (outside modal container)
+  // Đóng modal khi click overlay
   authModal.addEventListener("click", function (e) {
     if (e.target === authModal) {
       closeModal();
     }
   });
 
-  // Close modal with Escape key
+  // Đóng modal bằng phím Escape
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && authModal.classList.contains("show")) {
       closeModal();
     }
   });
 
-  // Switch to Login form
+  // Chuyển đổi giữa login và signup form
   showLoginBtn.addEventListener("click", function () {
     showLoginForm();
   });
 
-  // Switch to Signup form
   showSignupBtn.addEventListener("click", function () {
     showSignupForm();
   });
 
+  // Load thông tin user khi trang được tải
   async function onLoadUser() {
-    //   Try load data user
     try {
       const data = await getCurrentUser();
       const userInfo = JSON.parse(localStorage.getItem("userInfo"));
       const userName = document.querySelector(".user-name");
       userName.textContent = userInfo.display_name || data.user.display_name;
-      // console.log(data);
     } catch (error) {
+      // Nếu chưa login thì hiển thị nút auth
       const actionButtons = document.querySelector(".auth-buttons");
       actionButtons.style.display = "flex";
       throw error;
     }
   }
 
-  //   Try first load user from localstorage
+  // Gọi load user khi khởi tạo
   onLoadUser();
 
-  //   Submit action
-  //   Signup
+  // Xử lý form đăng ký
   signupForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Lấy data từ form
     const displayName = document.querySelector("#displayName");
     const username = document.querySelector("#username");
     const signupEmail = document.querySelector("#signupEmail");
     const signupPassword = document.querySelector("#signupPassword");
+
+    // Lấy elements để hiển thị lỗi
     const formGroupEmail = document.querySelector(".form-group-email");
     const formGroupPassword = document.querySelector(".form-group-password");
     const errorMessageEmail = document.querySelector(".error-message-email");
     const errorMessagePassword = document.querySelector(
       ".error-message-password"
     );
+
     const credentials = {
       email: signupEmail.value,
       password: signupPassword.value,
@@ -149,33 +154,43 @@ document.addEventListener("DOMContentLoaded", async function () {
     };
 
     try {
+      // Clear lỗi cũ
       formGroupEmail.classList.remove("invalid");
       formGroupPassword.classList.remove("invalid");
+
+      // Gọi API đăng ký
       const data = await registerApi(credentials);
       const { user, access_token, refresh_token } = data;
+
+      // Lưu tokens và user info
       localStorage.setItem("accessToken", access_token);
       localStorage.setItem("refreshToken", refresh_token);
       localStorage.setItem("userInfo", JSON.stringify(user));
+
+      // Cập nhật UI
       const userName = document.querySelector(".user-name");
       const userInfo = JSON.parse(localStorage.getItem("userInfo"));
       userName.textContent = userInfo.display_name;
       await onLoadUser();
       closeModal();
     } catch (error) {
+      // Xử lý lỗi từ API
       const { code, details, message } = error.response.data.error;
       console.log(code, details, message);
-      if (details)
+
+      if (details) {
         details.forEach((element) => {
           if (element.field === "email") {
             formGroupEmail.classList.add("invalid");
             errorMessageEmail.textContent = element.message;
           }
-
           if (element.field === "password") {
             formGroupPassword.classList.add("invalid");
             errorMessagePassword.textContent = element.message;
           }
         });
+      }
+
       if (message) {
         formGroupEmail.classList.add("invalid");
         errorMessageEmail.textContent = message;
@@ -184,30 +199,42 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
-  //   Login
+  // Xử lý form đăng nhập
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Lấy data từ form
     const loginEmail = document.querySelector("#loginEmail");
     const loginPassword = document.querySelector("#loginPassword");
+
+    // Lấy elements để hiển thị lỗi
     const formGroupEmail = document.querySelector(".form-group-email");
     const formGroupPassword = document.querySelector(".form-group-password");
     const errorMessageEmail = document.querySelector(".error-message-email");
     const errorMessagePassword = document.querySelector(
       ".error-message-password"
     );
+
     const credentials = {
       email: loginEmail.value,
       password: loginPassword.value,
     };
 
     try {
+      // Clear lỗi cũ
       formGroupEmail.classList.remove("invalid");
       formGroupPassword.classList.remove("invalid");
+
+      // Gọi API đăng nhập
       const data = await loginApi(credentials);
       const { user, access_token, refresh_token } = data;
+
+      // Lưu tokens và user info
       localStorage.setItem("accessToken", access_token);
       localStorage.setItem("refreshToken", refresh_token);
       localStorage.setItem("userInfo", JSON.stringify(user));
+
+      // Cập nhật UI
       const userName = document.querySelector(".user-name");
       const userInfo = JSON.parse(localStorage.getItem("userInfo"));
       userName.textContent = userInfo.display_name;
@@ -215,21 +242,24 @@ document.addEventListener("DOMContentLoaded", async function () {
       await onLoadUser();
       closeModal();
     } catch (error) {
+      // Xử lý lỗi từ API
       console.log(error);
       const { code, details, message } = error.response.data.error;
       console.log(code, details, message);
-      if (details)
+
+      if (details) {
         details.forEach((element) => {
           if (element.field === "email") {
             formGroupEmail.classList.add("invalid");
             errorMessageEmail.textContent = element.message;
           }
-
           if (element.field === "password") {
             formGroupPassword.classList.add("invalid");
             errorMessagePassword.textContent = element.message;
           }
         });
+      }
+
       if (message) {
         formGroupEmail.classList.add("invalid");
         errorMessageEmail.textContent = message;
@@ -238,18 +268,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
-  // Search library
-
-  // Bấm nút search -> hiện/ẩn ô input
+  // Xử lý tìm kiếm thư viện
+  // Click nút search để hiện/ẩn ô input
   searchLibraryBtn.addEventListener("click", (e) => {
-    e.stopPropagation(); // tránh click lan ra ngoài
+    e.stopPropagation(); // Tránh click lan ra ngoài
     searchLibraryInput.classList.toggle("show");
     if (searchLibraryInput.classList.contains("show")) {
-      searchLibraryInput.focus(); // tự động focus khi hiện
+      searchLibraryInput.focus(); // Tự động focus khi hiện
     }
   });
 
-  // Nếu click ra ngoài thì ẩn input
+  // Click ra ngoài thì ẩn input
   document.addEventListener("click", (e) => {
     if (
       !searchLibraryInput.contains(e.target) &&
@@ -259,25 +288,27 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
-  // Bắt sự kiện Enter trong ô input
+  // Xử lý phím Enter trong ô search
   searchLibraryInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       console.log(searchLibraryInput.value);
     }
   });
 
-  // Sort by button
+  // Xử lý nút Sort
   sortBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     sortByTable.classList.toggle("show");
   });
 
+  // Click ra ngoài ẩn bảng sort
   document.addEventListener("click", (e) => {
     if (!sortByTable.contains(e.target) && !sortBtn.contains(e.target)) {
       sortByTable.classList.remove("show");
     }
   });
 
+  // Xử lý navigation tabs
   navTabPlaylists.addEventListener("click", () => {
     navTabArtists.classList.remove("active");
     navTabPlaylists.classList.add("active");
@@ -292,14 +323,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     localStorage.setItem("sortByPlaylist", false);
   });
 
-  // Custom context menu
+  // Xử lý context menu (menu chuột phải)
   // Ẩn tất cả menu
   function hideMenus() {
     menuPlaylist.style.display = "none";
     menuArtist.style.display = "none";
   }
 
-  // Lắng nghe chuột phải trên các item
+  // Lắng nghe chuột phải trên các library item
   document.querySelectorAll(".library-item").forEach((item) => {
     item.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -334,41 +365,43 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 });
 
-// User Menu Dropdown Functionality
+// Xử lý User Menu Dropdown
 document.addEventListener("DOMContentLoaded", function () {
   const userAvatar = document.getElementById("userAvatar");
   const userDropdown = document.getElementById("userDropdown");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  // Toggle dropdown when clicking avatar
+  // Toggle dropdown khi click avatar
   userAvatar.addEventListener("click", function (e) {
     e.stopPropagation();
     userDropdown.classList.toggle("show");
   });
 
-  // Close dropdown when clicking outside
+  // Đóng dropdown khi click ra ngoài
   document.addEventListener("click", function (e) {
     if (!userAvatar.contains(e.target) && !userDropdown.contains(e.target)) {
       userDropdown.classList.remove("show");
     }
   });
 
-  // Close dropdown when pressing Escape
+  // Đóng dropdown khi nhấn Escape
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && userDropdown.classList.contains("show")) {
       userDropdown.classList.remove("show");
     }
   });
 
-  // Handle logout button click
+  // Xử lý nút logout
   logoutBtn.addEventListener("click", function () {
-    // Close dropdown first
+    // Đóng dropdown trước
     userDropdown.classList.remove("show");
 
-    ////logout login
+    // Xóa dữ liệu auth
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userInfo");
+
+    // Cập nhật UI
     const userName = document.querySelector(".user-name");
     userName.textContent = "";
     const actionButtons = document.querySelector(".auth-buttons");
@@ -376,9 +409,9 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
-// Other functionality
+// Các chức năng khác và render content
 document.addEventListener("DOMContentLoaded", async function () {
-  // Format seconds
+  // Hàm format giây thành phút:giây hoặc giờ:phút:giây
   function formatSeconds(seconds) {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -389,17 +422,18 @@ document.addEventListener("DOMContentLoaded", async function () {
     const s = String(secs).padStart(2, "0");
 
     if (hrs > 0) {
-      return `${hrs}:${m}:${s}`; // có giờ
+      return `${hrs}:${m}:${s}`; // Có giờ
     } else {
-      return `${mins}:${s}`; // chỉ phút:giây
+      return `${mins}:${s}`; // Chỉ phút:giây
     }
   }
-  // format number listeners
+
+  // Hàm format số với dấu phẩy
   function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
 
-  //   Render all playlists
+  // Lấy DOM elements cho main content
   const hitsSection = document.querySelector(".hits-section");
   const artistsSection = document.querySelector(".artists-section");
   const artistHero = document.querySelector(".artist-hero");
@@ -408,13 +442,15 @@ document.addEventListener("DOMContentLoaded", async function () {
   const createPlaylistSection = document.querySelector(".create-playlist");
   const createPlaylistBtn = document.querySelector(".create-btn");
   const hitsGrid = document.querySelector(".hits-grid");
-  const { playlists } = await getAllPlaylists();
   const artistsGrid = document.querySelector(".artists-grid");
-  const { artists } = await getAllArtists();
-
   const logoIcon = document.querySelector(".fa-spotify");
   const homeButton = document.querySelector(".home-btn");
 
+  // Load dữ liệu playlists và artists
+  const { playlists } = await getAllPlaylists();
+  const { artists } = await getAllArtists();
+
+  // Hàm hiển thị/ẩn UI phần popular (chi tiết playlist/artist)
   const showUIPopular = (isShow) => {
     if (isShow) {
       hitsSection.classList.add("hidden");
@@ -431,6 +467,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   };
 
+  // Hàm hiển thị/ẩn UI tạo playlist
   const showUICreatePlaylist = (isShow) => {
     if (isShow) {
       hitsSection.classList.add("hidden");
@@ -444,7 +481,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   };
 
-  // create my playlist
+  // Xử lý tạo playlist mới
   createPlaylistBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     try {
@@ -459,15 +496,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
-  // modal edits playlist
+  // Xử lý modal edit playlist
   const overlay = document.querySelector(".overlay");
   const modal = document.querySelector(".modal");
   const closeBtn = document.querySelector(".modal-close");
-
-  //
   const playlistTitle = document.querySelector(".playlist-title");
   const playlistImage = document.querySelector(".playlist-cover");
 
+  // Hàm mở/đóng modal edit
   function openModal() {
     overlay.classList.remove("hidden");
     modal.classList.remove("hidden");
@@ -478,12 +514,13 @@ document.addEventListener("DOMContentLoaded", async function () {
     modal.classList.add("hidden");
   }
 
+  // Event listeners cho modal
   playlistTitle.addEventListener("click", openModal);
   playlistImage.addEventListener("click", openModal);
   overlay.addEventListener("click", closeModal);
   closeBtn.addEventListener("click", closeModal);
 
-  // upload image to get url image
+  // Xử lý upload ảnh playlist
   const saveBtn = document.querySelector(".btn-save");
   let urlPlaylistCoverImage = null;
   const playlistName = document.querySelector(".playlist-name");
@@ -493,10 +530,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   );
   const coverPreviewImage = document.querySelector(".cover-preview-image");
   const playlistCoverImage = document.querySelector(".playlist-cover-image");
+
+  // Click để chọn file
   coverPreviewImage.addEventListener("click", async () => {
     fileInputPlaylistCover.click();
   });
-  // trigger event when change data in input
+
+  // Xử lý khi chọn file
   fileInputPlaylistCover.addEventListener("change", async () => {
     const file = fileInputPlaylistCover.files[0];
     if (file) {
@@ -509,9 +549,9 @@ document.addEventListener("DOMContentLoaded", async function () {
       };
       reader.readAsDataURL(file);
 
-      // Chuẩn bị dữ liệu FormData
+      // Upload lên server
       const formData = new FormData();
-      formData.append("cover", file); // backend sẽ nhận với key "image"
+      formData.append("cover", file);
 
       try {
         const response = await uploadPlaylistCover(
@@ -526,12 +566,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
+  // Lưu thay đổi playlist
   saveBtn.addEventListener("click", async () => {
     const playlistUpdateData = {
       name: playlistName.value,
       description: playlistDesc.value,
       image_url: urlPlaylistCoverImage,
     };
+
     try {
       const response = await updatePlaylist(
         playlistTitle.dataset.id,
@@ -548,6 +590,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
+  // Xử lý về trang chủ
   logoIcon.addEventListener("click", () => {
     showUIPopular(false);
     showUICreatePlaylist(false);
@@ -557,16 +600,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     showUIPopular(false);
     showUICreatePlaylist(false);
   });
-  // render all playlist
+
+  // Render tất cả playlists
   const hitsGridHtml = playlists
     .map((playlist) => {
       return `
       <div data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
-          <img
-            src="${playlist.image_url}"
-            alt="${playlist.description}"
-          />
+          <img src="${playlist.image_url}" alt="${playlist.description}" />
           <button class="hit-play-btn">
             <i class="fas fa-play"></i>
           </button>
@@ -581,7 +622,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     .join("");
   hitsGrid.innerHTML = hitsGridHtml;
 
-  //  Render all artists
+  // Render tất cả artists
   const artistsGridHtml = artists
     .map((artist) => {
       return `
@@ -602,20 +643,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     .join("");
   artistsGrid.innerHTML = artistsGridHtml;
 
-  // select a card to render UI hero
+  // Xử lý click vào playlist card
   const hitsCards = document.querySelectorAll(".hit-card");
   hitsCards.forEach((card) => {
     card.addEventListener("click", async () => {
       const playlist = await getPlaylistById(card.dataset.id);
       showUIPopular(true);
 
+      // Render hero section cho playlist
       const artistHeroHtml = `
         <div class="hero-background">
-          <img
-            src="${playlist.image_url}"
-            alt="${playlist.description}"
-            class="hero-image"
-          />
+          <img src="${playlist.image_url}" alt="${
+        playlist.description
+      }" class="hero-image" />
           <div class="hero-overlay"></div>
         </div>
         <div class="hero-content" data-id="${playlist.id}">
@@ -630,6 +670,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         </div>
         `;
 
+      // Xử lý nút follow/unfollow
       document.addEventListener("click", async (e) => {
         if (e.target.classList.contains("follow-btn")) {
           const btn = e.target;
@@ -637,55 +678,48 @@ document.addEventListener("DOMContentLoaded", async function () {
 
           if (btn.textContent === "Follow") {
             btn.textContent = "Unfollow";
-            // Gọi API follow
             await followPlaylist(playlistId);
           } else {
             btn.textContent = "Follow";
-            // Gọi API unfollow
             await unfollowPlaylist(playlistId);
           }
         }
       });
+
       artistHero.innerHTML = artistHeroHtml;
+
+      // Load và render tracks của playlist
       const { tracks } = await getTrackByPlaylist(playlist.id);
       if (tracks.length === 0) {
-        const popularSectionHtml =
-          `
-        <h2 class="section-title">Popular</h2>
-      ` +
-          `<div class="track-list">` +
-          `No tracks in playlist` +
-          `</div>`;
+        const popularSectionHtml = `
+          <h2 class="section-title">Popular</h2>
+          <div class="track-list">No tracks in playlist</div>`;
         popularSection.innerHTML = popularSectionHtml;
       } else {
         const popularSectionHtml =
           `
-        <h2 class="section-title">Popular</h2>
-      ` +
-          `<div class="track-list">` +
+          <h2 class="section-title">Popular</h2>
+          <div class="track-list">` +
           tracks
             .map(
               (track, index) => `
-            <div class="track-item">
-                <div class="track-number">${index + 1}</div>
-                <div class="track-image">
-                  <img
-                    src="${track.image_url}"
-                    alt="${track.title}"
-                  />
+              <div class="track-item">
+                  <div class="track-number">${index + 1}</div>
+                  <div class="track-image">
+                    <img src="${track.image_url}" alt="${track.title}" />
+                  </div>
+                  <div class="track-info">
+                    <div class="track-name">${track.title}</div>
+                  </div>
+                  <div class="track-plays">${track.play_count}</div>
+                  <div class="track-duration">${formatSeconds(
+                    track.duration
+                  )}</div>
+                  <button class="track-menu-btn">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
                 </div>
-                <div class="track-info">
-                  <div class="track-name">${track.title}</div>
-                </div>
-                <div class="track-plays">${track.play_count}</div>
-                <div class="track-duration">${formatSeconds(
-                  track.duration
-                )}</div>
-                <button class="track-menu-btn">
-                  <i class="fas fa-ellipsis-h"></i>
-                </button>
-              </div>
-            `
+              `
             )
             .join("") +
           `</div>`;
@@ -694,27 +728,30 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   });
 
+  // Xử lý click vào artist card
   const artistsCards = document.querySelectorAll(".artist-card");
   artistsCards.forEach((card) => {
     card.addEventListener("click", async () => {
       const artist = await getArtistById(card.dataset.id);
       showUIPopular(true);
+
+      // Render hero section cho artist
       const artistHeroHtml = `
         <div class="hero-background">
-          <img
-            src="${artist.image_url}"
-            alt="${artist.name}"
-            class="hero-image"
-          />
+          <img src="${artist.image_url}" alt="${
+        artist.name
+      }" class="hero-image" />
           <div class="hero-overlay"></div>
         </div>
         <div class="hero-content">
          ${
-           artist.is_verified &&
-           ` <div class="verified-badge">
+           artist.is_verified
+             ? `
+           <div class="verified-badge">
             <i class="fas fa-check-circle"></i>
             <span>Verified Artist</span>
           </div>`
+             : ""
          }
           <h1 class="artist-name">${artist.name}</h1>
           <p class="monthly-listeners">${formatNumber(
@@ -724,46 +761,38 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       artistHero.innerHTML = artistHeroHtml;
 
-      // artist popular tracks
+      // Load và render popular tracks của artist
       const { tracks } = await getArtistPopularTracks(artist.id);
       if (tracks.length === 0) {
-        const popularSectionHtml =
-          `
-        <h2 class="section-title">Popular</h2>
-      ` +
-          `<div class="track-list">` +
-          `No tracks in playlist` +
-          `</div>`;
+        const popularSectionHtml = `
+          <h2 class="section-title">Popular</h2>
+          <div class="track-list">No tracks in playlist</div>`;
         popularSection.innerHTML = popularSectionHtml;
       } else {
         const popularSectionHtml =
           `
-        <h2 class="section-title">Popular</h2>
-      ` +
-          `<div class="track-list">` +
+          <h2 class="section-title">Popular</h2>
+          <div class="track-list">` +
           tracks
             .map(
               (track, index) => `
-            <div class="track-item">
-                <div class="track-number">${index + 1}</div>
-                <div class="track-image">
-                  <img
-                    src="${track.image_url}"
-                    alt="${track.title}"
-                  />
+              <div class="track-item">
+                  <div class="track-number">${index + 1}</div>
+                  <div class="track-image">
+                    <img src="${track.image_url}" alt="${track.title}" />
+                  </div>
+                  <div class="track-info">
+                    <div class="track-name">${track.title}</div>
+                  </div>
+                  <div class="track-plays">${track.play_count}</div>
+                  <div class="track-duration">${formatSeconds(
+                    track.duration
+                  )}</div>
+                  <button class="track-menu-btn">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
                 </div>
-                <div class="track-info">
-                  <div class="track-name">${track.title}</div>
-                </div>
-                <div class="track-plays">${track.play_count}</div>
-                <div class="track-duration">${formatSeconds(
-                  track.duration
-                )}</div>
-                <button class="track-menu-btn">
-                  <i class="fas fa-ellipsis-h"></i>
-                </button>
-              </div>
-            `
+              `
             )
             .join("") +
           `</div>`;
