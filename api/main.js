@@ -40,6 +40,18 @@ const getArtistById = async (artistId) => {
   return response.data;
 };
 
+// tracks
+
+const getTrackByPlaylist = async (playlistId) => {
+  const response = await api.get(`playlists/${playlistId}/tracks`);
+  return response.data;
+};
+
+const getArtistPopularTracks = async (artistId) => {
+  const response = await api.get(`artists/${artistId}/tracks/popular`);
+  return response.data;
+};
+
 export {
   registerApi,
   loginApi,
@@ -48,4 +60,6 @@ export {
   getAllArtists,
   getPlaylistById,
   getArtistById,
+  getTrackByPlaylist,
+  getArtistPopularTracks,
 };

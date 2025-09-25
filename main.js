@@ -7,6 +7,8 @@ import {
   getAllArtists,
   getPlaylistById,
   getArtistById,
+  getTrackByPlaylist,
+  getArtistPopularTracks,
 } from "./api/main.js";
 
 // Auth Modal Functionality
@@ -371,6 +373,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Other functionality
 document.addEventListener("DOMContentLoaded", async function () {
+  // Format seconds
+  function formatSeconds(seconds) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    // Luôn 2 chữ số cho phút & giây
+    const m = String(mins).padStart(2, "0");
+    const s = String(secs).padStart(2, "0");
+
+    if (hrs > 0) {
+      return `${hrs}:${m}:${s}`; // có giờ
+    } else {
+      return `${mins}:${s}`; // chỉ phút:giây
+    }
+  }
+  // format number listeners
+  function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
   //   Render all playlists
   const hitsSection = document.querySelector(".hits-section");
   const artistsSection = document.querySelector(".artists-section");
@@ -381,6 +404,34 @@ document.addEventListener("DOMContentLoaded", async function () {
   const { playlists } = await getAllPlaylists();
   const artistsGrid = document.querySelector(".artists-grid");
   const { artists } = await getAllArtists();
+
+  const logoIcon = document.querySelector(".fa-spotify");
+  const homeButton = document.querySelector(".home-btn");
+
+  const showUIPopular = (isShow) => {
+    if (isShow) {
+      hitsSection.classList.add("hidden");
+      artistsSection.classList.add("hidden");
+      artistHero.classList.add("show");
+      artistControls.classList.add("show");
+      popularSection.classList.add("show");
+    } else {
+      hitsSection.classList.remove("hidden");
+      artistsSection.classList.remove("hidden");
+      artistHero.classList.remove("show");
+      artistControls.classList.remove("show");
+      popularSection.classList.remove("show");
+    }
+  };
+
+  logoIcon.addEventListener("click", () => {
+    showUIPopular(false);
+  });
+
+  homeButton.addEventListener("click", () => {
+    showUIPopular(false);
+  });
+
   const hitsGridHtml = playlists
     .map((playlist) => {
       return `
@@ -408,7 +459,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const artistsGridHtml = artists
     .map((artist) => {
       return `
-       <div class="artist-card">
+       <div data-id="${artist.id}" class="artist-card">
         <div class="artist-card-cover">
           <img src="${artist.image_url}" alt="${artist.bio}" />
           <button class="artist-play-btn">
@@ -430,11 +481,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   hitsCards.forEach((card) => {
     card.addEventListener("click", async () => {
       const playlist = await getPlaylistById(card.dataset.id);
-      hitsSection.classList.add("hidden");
-      artistsSection.classList.add("hidden");
-      artistHero.classList.add("show");
-      artistControls.classList.add("show");
-      popularSection.classList.add("show");
+      showUIPopular(true);
 
       const artistHeroHtml = `
       <div class="hero-background">
@@ -447,8 +494,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       </div>
       <div class="hero-content">
         <div class="verified-badge">
-          <i class="fas fa-check-circle"></i>
-          <span>Public playlist</span>
+          <span>Public playlist - ${playlist.description}</span>
         </div>
         <h1 class="artist-name">${playlist.name}</h1>
         <p class="monthly-listeners">1,021,833 monthly listeners</p>
@@ -456,6 +502,128 @@ document.addEventListener("DOMContentLoaded", async function () {
       `;
 
       artistHero.innerHTML = artistHeroHtml;
+      const { tracks } = await getTrackByPlaylist(playlist.id);
+      if (tracks.length === 0) {
+        const popularSectionHtml =
+          `
+        <h2 class="section-title">Popular</h2>
+      ` +
+          `<div class="track-list">` +
+          `No tracks in playlist` +
+          `</div>`;
+        popularSection.innerHTML = popularSectionHtml;
+      } else {
+        const popularSectionHtml =
+          `
+        <h2 class="section-title">Popular</h2>
+      ` +
+          `<div class="track-list">` +
+          tracks
+            .map(
+              (track, index) => `
+            <div class="track-item">
+                <div class="track-number">${index + 1}</div>
+                <div class="track-image">
+                  <img
+                    src="${track.image_url}"
+                    alt="${track.title}"
+                  />
+                </div>
+                <div class="track-info">
+                  <div class="track-name">${track.title}</div>
+                </div>
+                <div class="track-plays">${track.play_count}</div>
+                <div class="track-duration">${formatSeconds(
+                  track.duration
+                )}</div>
+                <button class="track-menu-btn">
+                  <i class="fas fa-ellipsis-h"></i>
+                </button>
+              </div>
+            `
+            )
+            .join("") +
+          `</div>`;
+        popularSection.innerHTML = popularSectionHtml;
+      }
+    });
+  });
+
+  const artistsCards = document.querySelectorAll(".artist-card");
+  artistsCards.forEach((card) => {
+    card.addEventListener("click", async () => {
+      const artist = await getArtistById(card.dataset.id);
+      showUIPopular(true);
+      const artistHeroHtml = `
+        <div class="hero-background">
+          <img
+            src="${artist.image_url}"
+            alt="${artist.name}"
+            class="hero-image"
+          />
+          <div class="hero-overlay"></div>
+        </div>
+        <div class="hero-content">
+         ${
+           artist.is_verified &&
+           ` <div class="verified-badge">
+            <i class="fas fa-check-circle"></i>
+            <span>Verified Artist</span>
+          </div>`
+         }
+          <h1 class="artist-name">${artist.name}</h1>
+          <p class="monthly-listeners">${formatNumber(
+            artist.monthly_listeners
+          )} monthly listeners</p>
+        </div>`;
+
+      artistHero.innerHTML = artistHeroHtml;
+
+      // artist popular tracks
+      const { tracks } = await getArtistPopularTracks(artist.id);
+      if (tracks.length === 0) {
+        const popularSectionHtml =
+          `
+        <h2 class="section-title">Popular</h2>
+      ` +
+          `<div class="track-list">` +
+          `No tracks in playlist` +
+          `</div>`;
+        popularSection.innerHTML = popularSectionHtml;
+      } else {
+        const popularSectionHtml =
+          `
+        <h2 class="section-title">Popular</h2>
+      ` +
+          `<div class="track-list">` +
+          tracks
+            .map(
+              (track, index) => `
+            <div class="track-item">
+                <div class="track-number">${index + 1}</div>
+                <div class="track-image">
+                  <img
+                    src="${track.image_url}"
+                    alt="${track.title}"
+                  />
+                </div>
+                <div class="track-info">
+                  <div class="track-name">${track.title}</div>
+                </div>
+                <div class="track-plays">${track.play_count}</div>
+                <div class="track-duration">${formatSeconds(
+                  track.duration
+                )}</div>
+                <button class="track-menu-btn">
+                  <i class="fas fa-ellipsis-h"></i>
+                </button>
+              </div>
+            `
+            )
+            .join("") +
+          `</div>`;
+        popularSection.innerHTML = popularSectionHtml;
+      }
     });
   });
 });
