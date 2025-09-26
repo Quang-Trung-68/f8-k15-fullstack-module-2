@@ -28,6 +28,11 @@ const getAllPlaylists = async () => {
   return response.data;
 };
 
+const getMyPlaylists = async () => {
+  const response = await api.get("me/playlists");
+  return response.data;
+};
+
 // artists
 
 const getAllArtists = async () => {
@@ -93,6 +98,11 @@ const updatePlaylist = async (playlistId, playlistData) => {
   return response.data;
 };
 
+const deletePlaylist = async (playlistId) => {
+  const response = await api.delete(`playlists/${playlistId}`);
+  return response.data;
+};
+
 // UPLOAD
 // upload image playlist cover
 const uploadPlaylistCover = async (playlistId, formData) => {
@@ -125,4 +135,6 @@ export {
   updatePlaylist,
   followArtist,
   unfollowArtist,
+  getMyPlaylists,
+  deletePlaylist,
 };

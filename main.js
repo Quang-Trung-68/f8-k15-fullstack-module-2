@@ -16,7 +16,32 @@ import {
   updatePlaylist,
   followArtist,
   unfollowArtist,
+  getMyPlaylists,
+  deletePlaylist,
 } from "./api/main.js";
+
+const renderMyPlaylists = async (libraryContent) => {
+  const { playlists } = await getMyPlaylists();
+  const libraryContentHtml = playlists
+    .map(
+      (playlist) =>
+        `
+      <div data-id=${playlist.id} class="library-item library-item-playlist">
+              <img
+                src="${playlist.image_url}"
+                alt="${playlist.name}"
+                class="item-image"
+              />
+              <div class="item-info">
+                <div class="item-title">${playlist.name}</div>
+                <div class="item-subtitle">Playlist</div>
+              </div>
+            </div>
+      `
+    )
+    .join("");
+  libraryContent.innerHTML = libraryContentHtml;
+};
 
 // Xử lý Auth Modal và các chức năng chính
 document.addEventListener("DOMContentLoaded", async function () {
@@ -325,6 +350,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     localStorage.setItem("sortByPlaylist", false);
   });
 
+  // render sidebar My library
+
+  const libraryContent = document.querySelector(".library-content");
+
+  await renderMyPlaylists(libraryContent);
+
   // Xử lý context menu (menu chuột phải)
   // Ẩn tất cả menu
   function hideMenus() {
@@ -332,36 +363,47 @@ document.addEventListener("DOMContentLoaded", async function () {
     menuArtist.style.display = "none";
   }
 
-  // Lắng nghe chuột phải trên các library item
-  document.querySelectorAll(".library-item").forEach((item) => {
-    item.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      hideMenus();
+  // PlaylistId hien tai
+  let currentPlaylistIdSideBar = null;
 
-      let menu;
-      if (item.classList.contains("library-item-playlist")) {
-        menu = menuPlaylist;
-      } else if (item.classList.contains("library-item-artist")) {
-        menu = menuArtist;
-      }
+  const onContextLibraryItem = () => {
+    // Lắng nghe chuột phải trên các library item
+    document.querySelectorAll(".library-item").forEach((item) => {
+      item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        hideMenus();
+        currentPlaylistIdSideBar = item.dataset.id;
+        let menu;
+        if (item.classList.contains("library-item-playlist")) {
+          menu = menuPlaylist;
+        } else if (item.classList.contains("library-item-artist")) {
+          menu = menuArtist;
+        }
 
-      if (menu) {
-        menu.style.display = "block";
-        menu.style.left = `${e.pageX}px`;
-        menu.style.top = `${e.pageY}px`;
-      }
+        if (menu) {
+          menu.style.display = "block";
+          menu.style.left = `${e.pageX}px`;
+          menu.style.top = `${e.pageY}px`;
+        }
+      });
     });
-  });
+  };
+
+  onContextLibraryItem();
 
   // Click ra ngoài ẩn menu
   document.addEventListener("click", () => hideMenus());
 
   // Click vào item menu
   [menuPlaylist, menuArtist].forEach((menu) => {
-    menu.addEventListener("click", (e) => {
+    menu.addEventListener("click", async (e) => {
       if (e.target.tagName === "DIV") {
-        alert(`Bạn chọn: ${e.target.innerText}`);
+        console.log(`Bạn chọn: ${e.target.innerText}`);
+        console.log(currentPlaylistIdSideBar);
+        await deletePlaylist(currentPlaylistIdSideBar);
+        await renderMyPlaylists(libraryContent);
         hideMenus();
+        onContextLibraryItem();
       }
     });
   });
@@ -447,6 +489,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const artistsGrid = document.querySelector(".artists-grid");
   const logoIcon = document.querySelector(".fa-spotify");
   const homeButton = document.querySelector(".home-btn");
+  const libraryContent = document.querySelector(".library-content");
 
   // Load dữ liệu playlists và artists
   const { playlists } = await getAllPlaylists();
@@ -492,6 +535,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       const playlistTitle = document.querySelector(".playlist-title");
       playlistTitle.textContent = playlist.name;
       playlistTitle.dataset.id = playlist.id;
+      await renderMyPlaylists(libraryContent);
     } catch (error) {
       console.log(error);
       throw error;
