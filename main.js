@@ -20,152 +20,189 @@ import {
   deletePlaylist,
 } from "./api/main.js";
 
+// Utility functions
+const formatSeconds = (seconds) => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const m = String(mins).padStart(2, "0");
+  const s = String(secs).padStart(2, "0");
+  return hrs > 0 ? `${hrs}:${m}:${s}` : `${mins}:${s}`;
+};
+
+const formatNumber = (num) =>
+  num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
 const renderMyPlaylists = async (libraryContent) => {
   const { playlists } = await getMyPlaylists();
   const libraryContentHtml = playlists
     .map(
-      (playlist) =>
-        `
+      (playlist) => `
       <div data-id=${playlist.id} class="library-item library-item-playlist">
-              <img
-                src="${playlist.image_url}"
-                alt="${playlist.name}"
-                class="item-image"
-              />
-              <div class="item-info">
-                <div class="item-title">${playlist.name}</div>
-                <div class="item-subtitle">Playlist</div>
-              </div>
-            </div>
-      `
+        <img src="${playlist.image_url}" alt="${playlist.name}" class="item-image" />
+        <div class="item-info">
+          <div class="item-title">${playlist.name}</div>
+          <div class="item-subtitle">Playlist</div>
+        </div>
+      </div>
+    `
     )
     .join("");
   libraryContent.innerHTML = libraryContentHtml;
 };
 
-// Xử lý Auth Modal và các chức năng chính
-document.addEventListener("DOMContentLoaded", async function () {
-  // Lấy tất cả DOM elements cần thiết
-  const signupBtn = document.querySelector(".signup-btn");
-  const loginBtn = document.querySelector(".login-btn");
-  const authModal = document.getElementById("authModal");
-  const modalClose = document.getElementById("modalClose");
-  const signupForm = document.getElementById("signupForm");
-  const loginForm = document.getElementById("loginForm");
-  const showLoginBtn = document.getElementById("showLogin");
-  const showSignupBtn = document.getElementById("showSignup");
-  const actionButtons = document.querySelector(".auth-buttons");
-  const sortBtn = document.querySelector(".sort-btn");
-  const sortByTable = document.querySelector(".sort-by-table");
-  const searchLibraryBtn = document.querySelector(".search-library-btn");
-  const searchLibraryInput = document.querySelector(".search-library-input");
-  const navTabPlaylists = document.querySelector(".nav-tab-playlists");
-  const navTabArtists = document.querySelector(".nav-tab-artists");
-  const menuPlaylist = document.getElementById("menuPlaylist");
-  const menuArtist = document.getElementById("menuArtist");
+// Main application
+document.addEventListener("DOMContentLoaded", async () => {
+  // DOM Elements
+  const elements = {
+    // Auth elements
+    signupBtn: document.querySelector(".signup-btn"),
+    loginBtn: document.querySelector(".login-btn"),
+    authModal: document.getElementById("authModal"),
+    modalClose: document.getElementById("modalClose"),
+    signupForm: document.getElementById("signupForm"),
+    loginForm: document.getElementById("loginForm"),
+    showLoginBtn: document.getElementById("showLogin"),
+    showSignupBtn: document.getElementById("showSignup"),
+    actionButtons: document.querySelector(".auth-buttons"),
 
-  // Lấy trạng thái sort từ localStorage, mặc định là playlist
+    // User elements
+    userAvatar: document.getElementById("userAvatar"),
+    userDropdown: document.getElementById("userDropdown"),
+    logoutBtn: document.getElementById("logoutBtn"),
+    userName: document.querySelector(".user-name"),
+
+    // Library elements
+    sortBtn: document.querySelector(".sort-btn"),
+    sortByTable: document.querySelector(".sort-by-table"),
+    searchLibraryBtn: document.querySelector(".search-library-btn"),
+    searchLibraryInput: document.querySelector(".search-library-input"),
+    navTabPlaylists: document.querySelector(".nav-tab-playlists"),
+    navTabArtists: document.querySelector(".nav-tab-artists"),
+    libraryContent: document.querySelector(".library-content"),
+
+    // Context menu elements
+    menuPlaylist: document.getElementById("menuPlaylist"),
+    menuArtist: document.getElementById("menuArtist"),
+
+    // Main content elements
+    hitsSection: document.querySelector(".hits-section"),
+    artistsSection: document.querySelector(".artists-section"),
+    artistHero: document.querySelector(".artist-hero"),
+    artistControls: document.querySelector(".artist-controls"),
+    popularSection: document.querySelector(".popular-section"),
+    createPlaylistSection: document.querySelector(".create-playlist"),
+    createPlaylistBtn: document.querySelector(".create-btn"),
+    hitsGrid: document.querySelector(".hits-grid"),
+    artistsGrid: document.querySelector(".artists-grid"),
+    logoIcon: document.querySelector(".fa-spotify"),
+    homeButton: document.querySelector(".home-btn"),
+
+    // Playlist modal elements
+    overlay: document.querySelector(".overlay"),
+    modal: document.querySelector(".modal"),
+    modalCloseBtn: document.querySelector(".modal-close"),
+    playlistTitle: document.querySelector(".playlist-title"),
+    playlistImage: document.querySelector(".playlist-cover"),
+    playlistName: document.querySelector(".playlist-name"),
+    playlistDesc: document.querySelector(".playlist-desc"),
+    fileInputPlaylistCover: document.querySelector("#fileInputPlaylistCover"),
+    coverPreviewImage: document.querySelector(".cover-preview-image"),
+    playlistCoverImage: document.querySelector(".playlist-cover-image"),
+    saveBtn: document.querySelector(".btn-save"),
+  };
+
+  // State variables
   let sortByPlaylist = localStorage.getItem("sortByPlaylist");
+  let currentPlaylistIdSideBar = null;
+  let urlPlaylistCoverImage = null;
 
-  // Cập nhật UI tabs dựa trên trạng thái sort
-  if (!sortByPlaylist || sortByPlaylist === "true") {
-    navTabPlaylists.classList.add("active");
-    navTabArtists.classList.remove("active");
-  } else {
-    navTabPlaylists.classList.remove("active");
-    navTabArtists.classList.add("active");
-  }
+  // UI Helper functions
+  const showAuthModal = () => {
+    elements.authModal.classList.add("show");
+    document.body.style.overflow = "hidden";
+  };
 
-  // Hiển thị form đăng ký
-  function showSignupForm() {
-    signupForm.style.display = "block";
-    loginForm.style.display = "none";
-  }
+  const hideAuthModal = () => {
+    elements.authModal.classList.remove("show");
+    document.body.style.overflow = "auto";
+  };
 
-  // Hiển thị form đăng nhập
-  function showLoginForm() {
-    signupForm.style.display = "none";
-    loginForm.style.display = "block";
-  }
+  const showSignupForm = () => {
+    elements.signupForm.style.display = "block";
+    elements.loginForm.style.display = "none";
+  };
 
-  // Mở modal auth
-  function openModal() {
-    authModal.classList.add("show");
-    document.body.style.overflow = "hidden"; // Ngăn scroll background
-  }
+  const showLoginForm = () => {
+    elements.signupForm.style.display = "none";
+    elements.loginForm.style.display = "block";
+  };
 
-  // Đóng modal auth
-  function closeModal() {
-    authModal.classList.remove("show");
-    document.body.style.overflow = "auto"; // Cho phép scroll lại
-  }
+  const toggleUserDropdown = () =>
+    elements.userDropdown.classList.toggle("show");
+  const hideUserDropdown = () => elements.userDropdown.classList.remove("show");
 
-  // Event listeners cho các nút mở modal
-  signupBtn.addEventListener("click", function () {
-    showSignupForm();
-    openModal();
-  });
-
-  loginBtn.addEventListener("click", function () {
-    showLoginForm();
-    openModal();
-  });
-
-  // Event listeners đóng modal
-  modalClose.addEventListener("click", closeModal);
-
-  // Đóng modal khi click overlay
-  authModal.addEventListener("click", function (e) {
-    if (e.target === authModal) {
-      closeModal();
+  const toggleSearchInput = () => {
+    elements.searchLibraryInput.classList.toggle("show");
+    if (elements.searchLibraryInput.classList.contains("show")) {
+      elements.searchLibraryInput.focus();
     }
-  });
+  };
 
-  // Đóng modal bằng phím Escape
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && authModal.classList.contains("show")) {
-      closeModal();
+  const toggleSortTable = () => elements.sortByTable.classList.toggle("show");
+
+  const hideMenus = () => {
+    elements.menuPlaylist.style.display = "none";
+    elements.menuArtist.style.display = "none";
+  };
+
+  const showUIPopular = (isShow) => {
+    const method = isShow ? "add" : "remove";
+    elements.hitsSection.classList[isShow ? "add" : "remove"]("hidden");
+    elements.artistsSection.classList[isShow ? "add" : "remove"]("hidden");
+    elements.artistHero.classList[isShow ? "add" : "remove"]("show");
+    elements.artistControls.classList[isShow ? "add" : "remove"]("show");
+    elements.popularSection.classList[isShow ? "add" : "remove"]("show");
+  };
+
+  const showUICreatePlaylist = (isShow) => {
+    if (isShow) {
+      elements.hitsSection.classList.add("hidden");
+      elements.artistsSection.classList.add("hidden");
+      elements.artistHero.classList.remove("show");
+      elements.artistControls.classList.remove("show");
+      elements.popularSection.classList.remove("show");
+      elements.createPlaylistSection.classList.add("show");
+    } else {
+      elements.createPlaylistSection.classList.remove("show");
     }
-  });
+  };
 
-  // Chuyển đổi giữa login và signup form
-  showLoginBtn.addEventListener("click", function () {
-    showLoginForm();
-  });
+  const openPlaylistModal = () => {
+    elements.overlay.classList.remove("hidden");
+    elements.modal.classList.remove("hidden");
+  };
 
-  showSignupBtn.addEventListener("click", function () {
-    showSignupForm();
-  });
+  const closePlaylistModal = () => {
+    elements.overlay.classList.add("hidden");
+    elements.modal.classList.add("hidden");
+  };
 
-  // Load thông tin user khi trang được tải
-  async function onLoadUser() {
+  // Authentication functions
+  const onLoadUser = async () => {
     try {
       const data = await getCurrentUser();
       const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      const userName = document.querySelector(".user-name");
-      userName.textContent = userInfo.display_name || data.user.display_name;
+      elements.userName.textContent =
+        userInfo.display_name || data.user.display_name;
+      elements.actionButtons.style.display = "none";
     } catch (error) {
-      // Nếu chưa login thì hiển thị nút auth
-      const actionButtons = document.querySelector(".auth-buttons");
-      actionButtons.style.display = "flex";
+      elements.actionButtons.style.display = "flex";
       throw error;
     }
-  }
+  };
 
-  // Gọi load user khi khởi tạo
-  onLoadUser();
-
-  // Xử lý form đăng ký
-  signupForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    // Lấy data từ form
-    const displayName = document.querySelector("#displayName");
-    const username = document.querySelector("#username");
-    const signupEmail = document.querySelector("#signupEmail");
-    const signupPassword = document.querySelector("#signupPassword");
-
-    // Lấy elements để hiển thị lỗi
+  const handleAuth = async (isSignup, formData) => {
     const formGroupEmail = document.querySelector(".form-group-email");
     const formGroupPassword = document.querySelector(".form-group-password");
     const errorMessageEmail = document.querySelector(".error-message-email");
@@ -173,37 +210,28 @@ document.addEventListener("DOMContentLoaded", async function () {
       ".error-message-password"
     );
 
-    const credentials = {
-      email: signupEmail.value,
-      password: signupPassword.value,
-      username: username.value,
-      display_name: displayName.value,
-    };
-
     try {
-      // Clear lỗi cũ
+      // Clear previous errors
       formGroupEmail.classList.remove("invalid");
       formGroupPassword.classList.remove("invalid");
 
-      // Gọi API đăng ký
-      const data = await registerApi(credentials);
+      const data = isSignup
+        ? await registerApi(formData)
+        : await loginApi(formData);
       const { user, access_token, refresh_token } = data;
 
-      // Lưu tokens và user info
+      // Save tokens and user info
       localStorage.setItem("accessToken", access_token);
       localStorage.setItem("refreshToken", refresh_token);
       localStorage.setItem("userInfo", JSON.stringify(user));
 
-      // Cập nhật UI
-      const userName = document.querySelector(".user-name");
-      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      userName.textContent = userInfo.display_name;
+      // Update UI
+      elements.userName.textContent = user.display_name;
+      elements.actionButtons.style.display = "none";
       await onLoadUser();
-      closeModal();
+      hideAuthModal();
     } catch (error) {
-      // Xử lý lỗi từ API
-      const { code, details, message } = error.response.data.error;
-      console.log(code, details, message);
+      const { details, message } = error.response.data.error;
 
       if (details) {
         details.forEach((element) => {
@@ -224,161 +252,131 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
       throw error;
     }
-  });
+  };
 
-  // Xử lý form đăng nhập
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  const logout = () => {
+    hideUserDropdown();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userInfo");
+    elements.userName.textContent = "";
+    elements.actionButtons.style.display = "flex";
+  };
 
-    // Lấy data từ form
-    const loginEmail = document.querySelector("#loginEmail");
-    const loginPassword = document.querySelector("#loginPassword");
-
-    // Lấy elements để hiển thị lỗi
-    const formGroupEmail = document.querySelector(".form-group-email");
-    const formGroupPassword = document.querySelector(".form-group-password");
-    const errorMessageEmail = document.querySelector(".error-message-email");
-    const errorMessagePassword = document.querySelector(
-      ".error-message-password"
-    );
-
-    const credentials = {
-      email: loginEmail.value,
-      password: loginPassword.value,
-    };
-
+  // Follow/Unfollow handlers
+  const handleFollowToggle = async (type, id, isFollowing, btn) => {
     try {
-      // Clear lỗi cũ
-      formGroupEmail.classList.remove("invalid");
-      formGroupPassword.classList.remove("invalid");
+      btn.disabled = true;
 
-      // Gọi API đăng nhập
-      const data = await loginApi(credentials);
-      const { user, access_token, refresh_token } = data;
+      if (type === "playlist") {
+        isFollowing ? await unfollowPlaylist(id) : await followPlaylist(id);
+      } else {
+        isFollowing ? await unfollowArtist(id) : await followArtist(id);
+      }
 
-      // Lưu tokens và user info
-      localStorage.setItem("accessToken", access_token);
-      localStorage.setItem("refreshToken", refresh_token);
-      localStorage.setItem("userInfo", JSON.stringify(user));
-
-      // Cập nhật UI
-      const userName = document.querySelector(".user-name");
-      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      userName.textContent = userInfo.display_name;
-      actionButtons.style.display = "none";
-      await onLoadUser();
-      closeModal();
+      btn.textContent = isFollowing ? "Follow" : "Unfollow";
+      btn.dataset.following = (!isFollowing).toString();
     } catch (error) {
-      // Xử lý lỗi từ API
-      console.log(error);
-      const { code, details, message } = error.response.data.error;
-      console.log(code, details, message);
+      console.error(`Error following/unfollowing ${type}:`, error);
+      btn.textContent = isFollowing ? "Unfollow" : "Follow";
+    } finally {
+      btn.disabled = false;
+    }
+  };
 
-      if (details) {
-        details.forEach((element) => {
-          if (element.field === "email") {
-            formGroupEmail.classList.add("invalid");
-            errorMessageEmail.textContent = element.message;
-          }
-          if (element.field === "password") {
-            formGroupPassword.classList.add("invalid");
-            errorMessagePassword.textContent = element.message;
-          }
-        });
+  // Render functions
+  const renderTracks = (tracks) => {
+    if (tracks.length === 0) {
+      return `<h2 class="section-title">Popular</h2><div class="track-list">No tracks in playlist</div>`;
+    }
+
+    return `
+      <h2 class="section-title">Popular</h2>
+      <div class="track-list">
+        ${tracks
+          .map(
+            (track, index) => `
+          <div class="track-item">
+            <div class="track-number">${index + 1}</div>
+            <div class="track-image">
+              <img src="${track.image_url}" alt="${track.title}" />
+            </div>
+            <div class="track-info">
+              <div class="track-name">${track.title}</div>
+            </div>
+            <div class="track-plays">${track.play_count}</div>
+            <div class="track-duration">${formatSeconds(track.duration)}</div>
+            <button class="track-menu-btn">
+              <i class="fas fa-ellipsis-h"></i>
+            </button>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+    `;
+  };
+
+  const renderPlaylistHero = (playlist) => `
+    <div class="hero-background">
+      <img src="${playlist.image_url}" alt="${
+    playlist.description
+  }" class="hero-image" />
+      <div class="hero-overlay"></div>
+    </div>
+    <div class="hero-content" data-id="${playlist.id}">
+      <div class="verified-badge">
+        <span>Public playlist - ${playlist.description}</span>
+      </div>
+      <h1 class="artist-name">${playlist.name}</h1>
+      <p class="monthly-listeners">1,021,833 monthly listeners</p>
+      ${
+        !playlist.is_owner
+          ? `<button class="follow-btn playlist-follow-btn" data-following="${
+              playlist.is_following
+            }">${playlist.is_following ? "Unfollow" : "Follow"}</button>`
+          : `<button type="button" class="owner-btn">Owner</button>`
       }
+    </div>
+  `;
 
-      if (message) {
-        formGroupEmail.classList.add("invalid");
-        errorMessageEmail.textContent = message;
+  const renderArtistHero = (artist) => `
+    <div class="hero-background">
+      <img src="${artist.image_url}" alt="${artist.name}" class="hero-image" />
+      <div class="hero-overlay"></div>
+    </div>
+    <div class="hero-content" data-id="${artist.id}">
+      ${
+        artist.is_verified
+          ? `
+        <div class="verified-badge">
+          <i class="fas fa-check-circle"></i>
+          <span>Verified Artist</span>
+        </div>`
+          : ""
       }
-      throw error;
-    }
-  });
+      <h1 class="artist-name">${artist.name}</h1>
+      <p class="monthly-listeners">${formatNumber(
+        artist.monthly_listeners
+      )} monthly listeners</p>
+      <button class="follow-btn artist-follow-btn" data-following="${
+        artist.is_following
+      }">
+        ${artist.is_following ? "Unfollow" : "Follow"}
+      </button>
+    </div>
+  `;
 
-  // Xử lý tìm kiếm thư viện
-  // Click nút search để hiện/ẩn ô input
-  searchLibraryBtn.addEventListener("click", (e) => {
-    e.stopPropagation(); // Tránh click lan ra ngoài
-    searchLibraryInput.classList.toggle("show");
-    if (searchLibraryInput.classList.contains("show")) {
-      searchLibraryInput.focus(); // Tự động focus khi hiện
-    }
-  });
-
-  // Click ra ngoài thì ẩn input
-  document.addEventListener("click", (e) => {
-    if (
-      !searchLibraryInput.contains(e.target) &&
-      !searchLibraryBtn.contains(e.target)
-    ) {
-      searchLibraryInput.classList.remove("show");
-    }
-  });
-
-  // Xử lý phím Enter trong ô search
-  searchLibraryInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      console.log(searchLibraryInput.value);
-    }
-  });
-
-  // Xử lý nút Sort
-  sortBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    sortByTable.classList.toggle("show");
-  });
-
-  // Click ra ngoài ẩn bảng sort
-  document.addEventListener("click", (e) => {
-    if (!sortByTable.contains(e.target) && !sortBtn.contains(e.target)) {
-      sortByTable.classList.remove("show");
-    }
-  });
-
-  // Xử lý navigation tabs
-  navTabPlaylists.addEventListener("click", () => {
-    navTabArtists.classList.remove("active");
-    navTabPlaylists.classList.add("active");
-    sortByPlaylist = true;
-    localStorage.setItem("sortByPlaylist", true);
-  });
-
-  navTabArtists.addEventListener("click", () => {
-    navTabPlaylists.classList.remove("active");
-    navTabArtists.classList.add("active");
-    sortByPlaylist = false;
-    localStorage.setItem("sortByPlaylist", false);
-  });
-
-  // render sidebar My library
-
-  const libraryContent = document.querySelector(".library-content");
-
-  await renderMyPlaylists(libraryContent);
-
-  // Xử lý context menu (menu chuột phải)
-  // Ẩn tất cả menu
-  function hideMenus() {
-    menuPlaylist.style.display = "none";
-    menuArtist.style.display = "none";
-  }
-
-  // PlaylistId hien tai
-  let currentPlaylistIdSideBar = null;
-
-  const onContextLibraryItem = () => {
-    // Lắng nghe chuột phải trên các library item
+  const setupContextMenu = () => {
     document.querySelectorAll(".library-item").forEach((item) => {
       item.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         hideMenus();
         currentPlaylistIdSideBar = item.dataset.id;
-        let menu;
-        if (item.classList.contains("library-item-playlist")) {
-          menu = menuPlaylist;
-        } else if (item.classList.contains("library-item-artist")) {
-          menu = menuArtist;
-        }
+
+        const menu = item.classList.contains("library-item-playlist")
+          ? elements.menuPlaylist
+          : elements.menuArtist;
 
         if (menu) {
           menu.style.display = "block";
@@ -389,268 +387,245 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   };
 
-  onContextLibraryItem();
+  // Event Listeners Setup
+  const setupEventListeners = () => {
+    // Auth modal events
+    elements.signupBtn.addEventListener("click", () => {
+      showSignupForm();
+      showAuthModal();
+    });
+    elements.loginBtn.addEventListener("click", () => {
+      showLoginForm();
+      showAuthModal();
+    });
+    elements.modalClose.addEventListener("click", hideAuthModal);
+    elements.showLoginBtn.addEventListener("click", showLoginForm);
+    elements.showSignupBtn.addEventListener("click", showSignupForm);
 
-  // Click ra ngoài ẩn menu
-  document.addEventListener("click", () => hideMenus());
+    // Modal close events
+    elements.authModal.addEventListener("click", (e) => {
+      if (e.target === elements.authModal) hideAuthModal();
+    });
 
-  // Click vào item menu
-  [menuPlaylist, menuArtist].forEach((menu) => {
-    menu.addEventListener("click", async (e) => {
-      if (e.target.tagName === "DIV") {
-        console.log(`Bạn chọn: ${e.target.innerText}`);
-        console.log(currentPlaylistIdSideBar);
-        await deletePlaylist(currentPlaylistIdSideBar);
-        await renderMyPlaylists(libraryContent);
-        hideMenus();
-        onContextLibraryItem();
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (elements.authModal.classList.contains("show")) hideAuthModal();
+        if (elements.userDropdown.classList.contains("show"))
+          hideUserDropdown();
       }
     });
-  });
-});
 
-// Xử lý User Menu Dropdown
-document.addEventListener("DOMContentLoaded", function () {
-  const userAvatar = document.getElementById("userAvatar");
-  const userDropdown = document.getElementById("userDropdown");
-  const logoutBtn = document.getElementById("logoutBtn");
+    // User dropdown events
+    elements.userAvatar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleUserDropdown();
+    });
 
-  // Toggle dropdown khi click avatar
-  userAvatar.addEventListener("click", function (e) {
-    e.stopPropagation();
-    userDropdown.classList.toggle("show");
-  });
+    elements.logoutBtn.addEventListener("click", logout);
 
-  // Đóng dropdown khi click ra ngoài
-  document.addEventListener("click", function (e) {
-    if (!userAvatar.contains(e.target) && !userDropdown.contains(e.target)) {
-      userDropdown.classList.remove("show");
-    }
-  });
+    // Search and sort events
+    elements.searchLibraryBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSearchInput();
+    });
 
-  // Đóng dropdown khi nhấn Escape
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && userDropdown.classList.contains("show")) {
-      userDropdown.classList.remove("show");
-    }
-  });
+    elements.searchLibraryInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") console.log(elements.searchLibraryInput.value);
+    });
 
-  // Xử lý nút logout
-  logoutBtn.addEventListener("click", function () {
-    // Đóng dropdown trước
-    userDropdown.classList.remove("show");
+    elements.sortBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSortTable();
+    });
 
-    // Xóa dữ liệu auth
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("userInfo");
+    // Navigation tabs
+    elements.navTabPlaylists.addEventListener("click", () => {
+      elements.navTabArtists.classList.remove("active");
+      elements.navTabPlaylists.classList.add("active");
+      sortByPlaylist = true;
+      localStorage.setItem("sortByPlaylist", true);
+    });
 
-    // Cập nhật UI
-    const userName = document.querySelector(".user-name");
-    userName.textContent = "";
-    const actionButtons = document.querySelector(".auth-buttons");
-    actionButtons.style.display = "flex";
-  });
-});
+    elements.navTabArtists.addEventListener("click", () => {
+      elements.navTabPlaylists.classList.remove("active");
+      elements.navTabArtists.classList.add("active");
+      sortByPlaylist = false;
+      localStorage.setItem("sortByPlaylist", false);
+    });
 
-// Các chức năng khác và render content
-document.addEventListener("DOMContentLoaded", async function () {
-  // Hàm format giây thành phút:giây hoặc giờ:phút:giây
-  function formatSeconds(seconds) {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    // Context menu events
+    [elements.menuPlaylist, elements.menuArtist].forEach((menu) => {
+      menu.addEventListener("click", async (e) => {
+        if (e.target.tagName === "DIV") {
+          await deletePlaylist(currentPlaylistIdSideBar);
+          await renderMyPlaylists(elements.libraryContent);
+          hideMenus();
+          setupContextMenu();
+          showUIPopular(false);
+          showUICreatePlaylist(false);
+        }
+      });
+    });
 
-    // Luôn 2 chữ số cho phút & giây
-    const m = String(mins).padStart(2, "0");
-    const s = String(secs).padStart(2, "0");
+    // Home navigation
+    [elements.logoIcon, elements.homeButton].forEach((el) => {
+      el.addEventListener("click", () => {
+        showUIPopular(false);
+        showUICreatePlaylist(false);
+      });
+    });
 
-    if (hrs > 0) {
-      return `${hrs}:${m}:${s}`; // Có giờ
-    } else {
-      return `${mins}:${s}`; // Chỉ phút:giây
-    }
-  }
+    // Create playlist
+    elements.createPlaylistBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      try {
+        showUICreatePlaylist(true);
+        const { playlist } = await createPlaylist();
+        elements.playlistTitle.textContent = playlist.name;
+        elements.playlistTitle.dataset.id = playlist.id;
+        await renderMyPlaylists(elements.libraryContent);
+        setupContextMenu();
+      } catch (error) {
+        console.error(error);
+      }
+    });
 
-  // Hàm format số với dấu phẩy
-  function formatNumber(num) {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  }
+    // Playlist modal events
+    elements.playlistTitle.addEventListener("click", openPlaylistModal);
+    elements.playlistImage.addEventListener("click", openPlaylistModal);
+    elements.overlay.addEventListener("click", closePlaylistModal);
+    elements.modalCloseBtn.addEventListener("click", closePlaylistModal);
 
-  // Lấy DOM elements cho main content
-  const hitsSection = document.querySelector(".hits-section");
-  const artistsSection = document.querySelector(".artists-section");
-  const artistHero = document.querySelector(".artist-hero");
-  const artistControls = document.querySelector(".artist-controls");
-  const popularSection = document.querySelector(".popular-section");
-  const createPlaylistSection = document.querySelector(".create-playlist");
-  const createPlaylistBtn = document.querySelector(".create-btn");
-  const hitsGrid = document.querySelector(".hits-grid");
-  const artistsGrid = document.querySelector(".artists-grid");
-  const logoIcon = document.querySelector(".fa-spotify");
-  const homeButton = document.querySelector(".home-btn");
-  const libraryContent = document.querySelector(".library-content");
+    // File upload
+    elements.coverPreviewImage.addEventListener("click", () =>
+      elements.fileInputPlaylistCover.click()
+    );
 
-  // Load dữ liệu playlists và artists
-  const { playlists } = await getAllPlaylists();
-  const { artists } = await getAllArtists();
+    elements.fileInputPlaylistCover.addEventListener("change", async () => {
+      const file = elements.fileInputPlaylistCover.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          elements.coverPreviewImage.src = e.target.result;
+          elements.playlistCoverImage.src = e.target.result;
+          elements.coverPreviewImage.style.display = "block";
+        };
+        reader.readAsDataURL(file);
 
-  // Hàm hiển thị/ẩn UI phần popular (chi tiết playlist/artist)
-  const showUIPopular = (isShow) => {
-    if (isShow) {
-      hitsSection.classList.add("hidden");
-      artistsSection.classList.add("hidden");
-      artistHero.classList.add("show");
-      artistControls.classList.add("show");
-      popularSection.classList.add("show");
-    } else {
-      hitsSection.classList.remove("hidden");
-      artistsSection.classList.remove("hidden");
-      artistHero.classList.remove("show");
-      artistControls.classList.remove("show");
-      popularSection.classList.remove("show");
-    }
-  };
+        const formData = new FormData();
+        formData.append("cover", file);
 
-  // Hàm hiển thị/ẩn UI tạo playlist
-  const showUICreatePlaylist = (isShow) => {
-    if (isShow) {
-      hitsSection.classList.add("hidden");
-      artistsSection.classList.add("hidden");
-      artistHero.classList.remove("show");
-      artistControls.classList.remove("show");
-      popularSection.classList.remove("show");
-      createPlaylistSection.classList.add("show");
-    } else {
-      createPlaylistSection.classList.remove("show");
-    }
-  };
+        try {
+          const response = await uploadPlaylistCover(
+            elements.playlistTitle.dataset.id,
+            formData
+          );
+          urlPlaylistCoverImage = response.file.url;
+        } catch (error) {
+          console.error("Upload error:", error);
+        }
+      }
+    });
 
-  // Xử lý tạo playlist mới
-  createPlaylistBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    try {
-      showUICreatePlaylist(true);
-      const { playlist } = await createPlaylist();
-      const playlistTitle = document.querySelector(".playlist-title");
-      playlistTitle.textContent = playlist.name;
-      playlistTitle.dataset.id = playlist.id;
-      await renderMyPlaylists(libraryContent);
-    } catch (error) {
-      console.log(error);
-      throw error;
-    }
-  });
-
-  // Xử lý modal edit playlist
-  const overlay = document.querySelector(".overlay");
-  const modal = document.querySelector(".modal");
-  const closeBtn = document.querySelector(".modal-close");
-  const playlistTitle = document.querySelector(".playlist-title");
-  const playlistImage = document.querySelector(".playlist-cover");
-
-  // Hàm mở/đóng modal edit
-  function openModal() {
-    overlay.classList.remove("hidden");
-    modal.classList.remove("hidden");
-  }
-
-  function closeModal() {
-    overlay.classList.add("hidden");
-    modal.classList.add("hidden");
-  }
-
-  // Event listeners cho modal
-  playlistTitle.addEventListener("click", openModal);
-  playlistImage.addEventListener("click", openModal);
-  overlay.addEventListener("click", closeModal);
-  closeBtn.addEventListener("click", closeModal);
-
-  // Xử lý upload ảnh playlist
-  const saveBtn = document.querySelector(".btn-save");
-  let urlPlaylistCoverImage = null;
-  const playlistName = document.querySelector(".playlist-name");
-  const playlistDesc = document.querySelector(".playlist-desc");
-  const fileInputPlaylistCover = document.querySelector(
-    "#fileInputPlaylistCover"
-  );
-  const coverPreviewImage = document.querySelector(".cover-preview-image");
-  const playlistCoverImage = document.querySelector(".playlist-cover-image");
-
-  // Click để chọn file
-  coverPreviewImage.addEventListener("click", async () => {
-    fileInputPlaylistCover.click();
-  });
-
-  // Xử lý khi chọn file
-  fileInputPlaylistCover.addEventListener("change", async () => {
-    const file = fileInputPlaylistCover.files[0];
-    if (file) {
-      // Preview ảnh
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        coverPreviewImage.src = e.target.result;
-        playlistCoverImage.src = e.target.result;
-        coverPreviewImage.style.display = "block";
+    // Save playlist changes
+    elements.saveBtn.addEventListener("click", async () => {
+      const playlistUpdateData = {
+        name: elements.playlistName.value,
+        description: elements.playlistDesc.value,
+        image_url: urlPlaylistCoverImage,
       };
-      reader.readAsDataURL(file);
-
-      // Upload lên server
-      const formData = new FormData();
-      formData.append("cover", file);
 
       try {
-        const response = await uploadPlaylistCover(
-          playlistTitle.dataset.id,
-          formData
+        await updatePlaylist(
+          elements.playlistTitle.dataset.id,
+          playlistUpdateData
         );
-        urlPlaylistCoverImage = response.file.url;
-        console.log(response);
+        const playlist = await getPlaylistById(
+          elements.playlistTitle.dataset.id
+        );
+        elements.playlistTitle.textContent = playlist.name;
+        elements.playlistTitle.dataset.id = playlist.id;
+        await renderMyPlaylists(elements.libraryContent);
+        setupContextMenu();
       } catch (error) {
-        console.error("Upload error:", error);
+        console.error(error);
+      } finally {
+        closePlaylistModal();
       }
+    });
+
+    // Form submissions
+    elements.signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = {
+        email: document.querySelector("#signupEmail").value,
+        password: document.querySelector("#signupPassword").value,
+        username: document.querySelector("#username").value,
+        display_name: document.querySelector("#displayName").value,
+      };
+      await handleAuth(true, formData);
+    });
+
+    elements.loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = {
+        email: document.querySelector("#loginEmail").value,
+        password: document.querySelector("#loginPassword").value,
+      };
+      await handleAuth(false, formData);
+    });
+
+    // Global click handlers
+    document.addEventListener("click", (e) => {
+      if (
+        !elements.searchLibraryInput.contains(e.target) &&
+        !elements.searchLibraryBtn.contains(e.target)
+      ) {
+        elements.searchLibraryInput.classList.remove("show");
+      }
+      if (
+        !elements.sortByTable.contains(e.target) &&
+        !elements.sortBtn.contains(e.target)
+      ) {
+        elements.sortByTable.classList.remove("show");
+      }
+      if (
+        !elements.userAvatar.contains(e.target) &&
+        !elements.userDropdown.contains(e.target)
+      ) {
+        hideUserDropdown();
+      }
+      hideMenus();
+    });
+  };
+
+  // Initialize application
+  const init = async () => {
+    // Update UI tabs based on sort state
+    if (!sortByPlaylist || sortByPlaylist === "true") {
+      elements.navTabPlaylists.classList.add("active");
+      elements.navTabArtists.classList.remove("active");
+    } else {
+      elements.navTabPlaylists.classList.remove("active");
+      elements.navTabArtists.classList.add("active");
     }
-  });
 
-  // Lưu thay đổi playlist
-  saveBtn.addEventListener("click", async () => {
-    const playlistUpdateData = {
-      name: playlistName.value,
-      description: playlistDesc.value,
-      image_url: urlPlaylistCoverImage,
-    };
+    // Setup event listeners
+    setupEventListeners();
 
-    try {
-      const response = await updatePlaylist(
-        playlistTitle.dataset.id,
-        playlistUpdateData
-      );
-      console.log(response);
-      const playlist = await getPlaylistById(playlistTitle.dataset.id);
-      playlistTitle.textContent = playlist.name;
-      playlistTitle.dataset.id = playlist.id;
-    } catch (error) {
-      throw error;
-    } finally {
-      closeModal();
-    }
-  });
+    // Load user and render playlists
+    await onLoadUser();
+    await renderMyPlaylists(elements.libraryContent);
+    setupContextMenu();
 
-  // Xử lý về trang chủ
-  logoIcon.addEventListener("click", () => {
-    showUIPopular(false);
-    showUICreatePlaylist(false);
-  });
+    // Load and render main content
+    const { playlists } = await getAllPlaylists();
+    const { artists } = await getAllArtists();
 
-  homeButton.addEventListener("click", () => {
-    showUIPopular(false);
-    showUICreatePlaylist(false);
-  });
-
-  // Render tất cả playlists
-  const hitsGridHtml = playlists
-    .map((playlist) => {
-      return `
+    // Render playlists grid
+    const hitsGridHtml = playlists
+      .map(
+        (playlist) => `
       <div data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
           <img src="${playlist.image_url}" alt="${playlist.description}" />
@@ -663,16 +638,16 @@ document.addEventListener("DOMContentLoaded", async function () {
           <p class="hit-card-artist">${playlist.user_display_name}</p>
         </div>
       </div>
-    `;
-    })
-    .join("");
-  hitsGrid.innerHTML = hitsGridHtml;
+    `
+      )
+      .join("");
+    elements.hitsGrid.innerHTML = hitsGridHtml;
 
-  // Render tất cả artists
-  const artistsGridHtml = artists
-    .map((artist) => {
-      return `
-       <div data-id="${artist.id}" class="artist-card">
+    // Render artists grid
+    const artistsGridHtml = artists
+      .map(
+        (artist) => `
+      <div data-id="${artist.id}" class="artist-card">
         <div class="artist-card-cover">
           <img src="${artist.image_url}" alt="${artist.bio}" />
           <button class="artist-play-btn">
@@ -684,225 +659,75 @@ document.addEventListener("DOMContentLoaded", async function () {
           <p class="artist-card-type">${artist.bio}</p>
         </div>
       </div>
-    `;
-    })
-    .join("");
-  artistsGrid.innerHTML = artistsGridHtml;
+    `
+      )
+      .join("");
+    elements.artistsGrid.innerHTML = artistsGridHtml;
 
-  // Xử lý click vào playlist card
-  const hitsCards = document.querySelectorAll(".hit-card");
-  hitsCards.forEach((card) => {
-    card.addEventListener("click", async () => {
-      const playlist = await getPlaylistById(card.dataset.id);
-      showUIPopular(true);
+    // Setup playlist card click events
+    document.querySelectorAll(".hit-card").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const playlist = await getPlaylistById(card.dataset.id);
+        showUIPopular(true);
 
-      // Render hero section cho playlist
-      const artistHeroHtml = `
-      <div class="hero-background">
-        <img src="${playlist.image_url}" alt="${
-        playlist.description
-      }" class="hero-image" />
-        <div class="hero-overlay"></div>
-      </div>
-      <div class="hero-content" data-id="${playlist.id}">
-        <div class="verified-badge">
-          <span>Public playlist - ${playlist.description}</span>
-        </div>
-        <h1 class="artist-name">${playlist.name}</h1>
-        <p class="monthly-listeners">1,021,833 monthly listeners</p>
-        ${
-          !playlist.is_owner
-            ? `<button class="follow-btn playlist-follow-btn" data-following="${
-                playlist.is_following
-              }">${playlist.is_following ? "Unfollow" : "Follow"}</button>`
-            : `<button type="button" class="owner-btn">Owner</button>`
+        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
+
+        // Setup follow button
+        const followBtn = elements.artistHero.querySelector(
+          ".playlist-follow-btn"
+        );
+        if (followBtn) {
+          followBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFollowing = e.target.dataset.following === "true";
+            await handleFollowToggle(
+              "playlist",
+              playlist.id,
+              isFollowing,
+              e.target
+            );
+          });
         }
-      </div>
-    `;
 
-      artistHero.innerHTML = artistHeroHtml;
-
-      // Xử lý nút follow/unfollow cho playlist
-      const playlistFollowBtn = artistHero.querySelector(
-        ".playlist-follow-btn"
-      );
-      if (playlistFollowBtn) {
-        playlistFollowBtn.addEventListener("click", async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const btn = e.target;
-          const playlistId = btn.closest(".hero-content").dataset.id;
-          const isFollowing = btn.dataset.following === "true";
-
-          try {
-            btn.disabled = true; // Disable button during API call
-
-            if (isFollowing) {
-              await unfollowPlaylist(playlistId);
-              btn.textContent = "Follow";
-              btn.dataset.following = "false";
-            } else {
-              await followPlaylist(playlistId);
-              btn.textContent = "Unfollow";
-              btn.dataset.following = "true";
-            }
-          } catch (error) {
-            console.error("Error following/unfollowing playlist:", error);
-            // Revert button state on error
-            btn.textContent = isFollowing ? "Unfollow" : "Follow";
-          } finally {
-            btn.disabled = false; // Re-enable button
-          }
-        });
-      }
-
-      // Load và render tracks của playlist
-      const { tracks } = await getTrackByPlaylist(playlist.id);
-      if (tracks.length === 0) {
-        const popularSectionHtml = `
-        <h2 class="section-title">Popular</h2>
-        <div class="track-list">No tracks in playlist</div>`;
-        popularSection.innerHTML = popularSectionHtml;
-      } else {
-        const popularSectionHtml =
-          `
-        <h2 class="section-title">Popular</h2>
-        <div class="track-list">` +
-          tracks
-            .map(
-              (track, index) => `
-            <div class="track-item">
-                <div class="track-number">${index + 1}</div>
-                <div class="track-image">
-                  <img src="${track.image_url}" alt="${track.title}" />
-                </div>
-                <div class="track-info">
-                  <div class="track-name">${track.title}</div>
-                </div>
-                <div class="track-plays">${track.play_count}</div>
-                <div class="track-duration">${formatSeconds(
-                  track.duration
-                )}</div>
-                <button class="track-menu-btn">
-                  <i class="fas fa-ellipsis-h"></i>
-                </button>
-              </div>
-            `
-            )
-            .join("") +
-          `</div>`;
-        popularSection.innerHTML = popularSectionHtml;
-      }
+        // Load and render tracks
+        const { tracks } = await getTrackByPlaylist(playlist.id);
+        elements.popularSection.innerHTML = renderTracks(tracks);
+      });
     });
-  });
 
-  // Xử lý click vào artist card
-  const artistsCards = document.querySelectorAll(".artist-card");
-  artistsCards.forEach((card) => {
-    card.addEventListener("click", async () => {
-      const artist = await getArtistById(card.dataset.id);
-      showUIPopular(true);
+    // Setup artist card click events
+    document.querySelectorAll(".artist-card").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const artist = await getArtistById(card.dataset.id);
+        showUIPopular(true);
 
-      // Render hero section cho artist
-      const artistHeroHtml = `
-      <div class="hero-background">
-        <img src="${artist.image_url}" alt="${
-        artist.name
-      }" class="hero-image" />
-        <div class="hero-overlay"></div>
-      </div>
-      <div class="hero-content" data-id="${artist.id}">
-       ${
-         artist.is_verified
-           ? `
-         <div class="verified-badge">
-          <i class="fas fa-check-circle"></i>
-          <span>Verified Artist</span>
-        </div>`
-           : ""
-       }
-        <h1 class="artist-name">${artist.name}</h1>
-        <p class="monthly-listeners">${formatNumber(
-          artist.monthly_listeners
-        )} monthly listeners</p>
-        <button class="follow-btn artist-follow-btn" data-following="${
-          artist.is_following
-        }">${artist.is_following ? "Unfollow" : "Follow"}</button>
-      </div>`;
+        elements.artistHero.innerHTML = renderArtistHero(artist);
 
-      artistHero.innerHTML = artistHeroHtml;
+        // Setup follow button
+        const followBtn =
+          elements.artistHero.querySelector(".artist-follow-btn");
+        if (followBtn) {
+          followBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFollowing = e.target.dataset.following === "true";
+            await handleFollowToggle(
+              "artist",
+              artist.id,
+              isFollowing,
+              e.target
+            );
+          });
+        }
 
-      // Xử lý nút follow/unfollow cho artist
-      const artistFollowBtn = artistHero.querySelector(".artist-follow-btn");
-      if (artistFollowBtn) {
-        artistFollowBtn.addEventListener("click", async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const btn = e.target;
-          const artistId = btn.closest(".hero-content").dataset.id;
-          const isFollowing = btn.dataset.following === "true";
-
-          try {
-            btn.disabled = true; // Disable button during API call
-
-            if (isFollowing) {
-              await unfollowArtist(artistId);
-              btn.textContent = "Follow";
-              btn.dataset.following = "false";
-            } else {
-              await followArtist(artistId);
-              btn.textContent = "Unfollow";
-              btn.dataset.following = "true";
-            }
-          } catch (error) {
-            console.error("Error following/unfollowing artist:", error);
-            // Revert button state on error
-            btn.textContent = isFollowing ? "Unfollow" : "Follow";
-          } finally {
-            btn.disabled = false; // Re-enable button
-          }
-        });
-      }
-
-      // Load và render popular tracks của artist
-      const { tracks } = await getArtistPopularTracks(artist.id);
-      if (tracks.length === 0) {
-        const popularSectionHtml = `
-        <h2 class="section-title">Popular</h2>
-        <div class="track-list">No tracks in playlist</div>`;
-        popularSection.innerHTML = popularSectionHtml;
-      } else {
-        const popularSectionHtml =
-          `
-        <h2 class="section-title">Popular</h2>
-        <div class="track-list">` +
-          tracks
-            .map(
-              (track, index) => `
-            <div class="track-item">
-                <div class="track-number">${index + 1}</div>
-                <div class="track-image">
-                  <img src="${track.image_url}" alt="${track.title}" />
-                </div>
-                <div class="track-info">
-                  <div class="track-name">${track.title}</div>
-                </div>
-                <div class="track-plays">${track.play_count}</div>
-                <div class="track-duration">${formatSeconds(
-                  track.duration
-                )}</div>
-                <button class="track-menu-btn">
-                  <i class="fas fa-ellipsis-h"></i>
-                </button>
-              </div>
-            `
-            )
-            .join("") +
-          `</div>`;
-        popularSection.innerHTML = popularSectionHtml;
-      }
+        // Load and render tracks
+        const { tracks } = await getArtistPopularTracks(artist.id);
+        elements.popularSection.innerHTML = renderTracks(tracks);
+      });
     });
-  });
+  };
+
+  // Start the application
+  await init();
 });
