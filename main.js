@@ -14,6 +14,8 @@ import {
   createPlaylist,
   uploadPlaylistCover,
   updatePlaylist,
+  followArtist,
+  unfollowArtist,
 } from "./api/main.js";
 
 // Xử lý Auth Modal và các chức năng chính
@@ -652,74 +654,97 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       // Render hero section cho playlist
       const artistHeroHtml = `
-        <div class="hero-background">
-          <img src="${playlist.image_url}" alt="${
+      <div class="hero-background">
+        <img src="${playlist.image_url}" alt="${
         playlist.description
       }" class="hero-image" />
-          <div class="hero-overlay"></div>
+        <div class="hero-overlay"></div>
+      </div>
+      <div class="hero-content" data-id="${playlist.id}">
+        <div class="verified-badge">
+          <span>Public playlist - ${playlist.description}</span>
         </div>
-        <div class="hero-content" data-id="${playlist.id}">
-          <div class="verified-badge">
-            <span>Public playlist - ${playlist.description}</span>
-          </div>
-          <h1 class="artist-name">${playlist.name}</h1>
-          <p class="monthly-listeners">1,021,833 monthly listeners</p>
-          <button class="follow-btn">${
-            playlist.is_following ? "Unfollow" : "Follow"
-          }</button>
-        </div>
-        `;
-
-      // Xử lý nút follow/unfollow
-      document.addEventListener("click", async (e) => {
-        if (e.target.classList.contains("follow-btn")) {
-          const btn = e.target;
-          const playlistId = btn.closest(".hero-content").dataset.id;
-
-          if (btn.textContent === "Follow") {
-            btn.textContent = "Unfollow";
-            await followPlaylist(playlistId);
-          } else {
-            btn.textContent = "Follow";
-            await unfollowPlaylist(playlistId);
-          }
+        <h1 class="artist-name">${playlist.name}</h1>
+        <p class="monthly-listeners">1,021,833 monthly listeners</p>
+        ${
+          !playlist.is_owner
+            ? `<button class="follow-btn playlist-follow-btn" data-following="${
+                playlist.is_following
+              }">${playlist.is_following ? "Unfollow" : "Follow"}</button>`
+            : `<button type="button" class="owner-btn">Owner</button>`
         }
-      });
+      </div>
+    `;
 
       artistHero.innerHTML = artistHeroHtml;
+
+      // Xử lý nút follow/unfollow cho playlist
+      const playlistFollowBtn = artistHero.querySelector(
+        ".playlist-follow-btn"
+      );
+      if (playlistFollowBtn) {
+        playlistFollowBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const btn = e.target;
+          const playlistId = btn.closest(".hero-content").dataset.id;
+          const isFollowing = btn.dataset.following === "true";
+
+          try {
+            btn.disabled = true; // Disable button during API call
+
+            if (isFollowing) {
+              await unfollowPlaylist(playlistId);
+              btn.textContent = "Follow";
+              btn.dataset.following = "false";
+            } else {
+              await followPlaylist(playlistId);
+              btn.textContent = "Unfollow";
+              btn.dataset.following = "true";
+            }
+          } catch (error) {
+            console.error("Error following/unfollowing playlist:", error);
+            // Revert button state on error
+            btn.textContent = isFollowing ? "Unfollow" : "Follow";
+          } finally {
+            btn.disabled = false; // Re-enable button
+          }
+        });
+      }
 
       // Load và render tracks của playlist
       const { tracks } = await getTrackByPlaylist(playlist.id);
       if (tracks.length === 0) {
         const popularSectionHtml = `
-          <h2 class="section-title">Popular</h2>
-          <div class="track-list">No tracks in playlist</div>`;
+        <h2 class="section-title">Popular</h2>
+        <div class="track-list">No tracks in playlist</div>`;
         popularSection.innerHTML = popularSectionHtml;
       } else {
         const popularSectionHtml =
           `
-          <h2 class="section-title">Popular</h2>
-          <div class="track-list">` +
+        <h2 class="section-title">Popular</h2>
+        <div class="track-list">` +
           tracks
             .map(
               (track, index) => `
-              <div class="track-item">
-                  <div class="track-number">${index + 1}</div>
-                  <div class="track-image">
-                    <img src="${track.image_url}" alt="${track.title}" />
-                  </div>
-                  <div class="track-info">
-                    <div class="track-name">${track.title}</div>
-                  </div>
-                  <div class="track-plays">${track.play_count}</div>
-                  <div class="track-duration">${formatSeconds(
-                    track.duration
-                  )}</div>
-                  <button class="track-menu-btn">
-                    <i class="fas fa-ellipsis-h"></i>
-                  </button>
+            <div class="track-item">
+                <div class="track-number">${index + 1}</div>
+                <div class="track-image">
+                  <img src="${track.image_url}" alt="${track.title}" />
                 </div>
-              `
+                <div class="track-info">
+                  <div class="track-name">${track.title}</div>
+                </div>
+                <div class="track-plays">${track.play_count}</div>
+                <div class="track-duration">${formatSeconds(
+                  track.duration
+                )}</div>
+                <button class="track-menu-btn">
+                  <i class="fas fa-ellipsis-h"></i>
+                </button>
+              </div>
+            `
             )
             .join("") +
           `</div>`;
@@ -737,62 +762,98 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       // Render hero section cho artist
       const artistHeroHtml = `
-        <div class="hero-background">
-          <img src="${artist.image_url}" alt="${
+      <div class="hero-background">
+        <img src="${artist.image_url}" alt="${
         artist.name
       }" class="hero-image" />
-          <div class="hero-overlay"></div>
-        </div>
-        <div class="hero-content">
-         ${
-           artist.is_verified
-             ? `
-           <div class="verified-badge">
-            <i class="fas fa-check-circle"></i>
-            <span>Verified Artist</span>
-          </div>`
-             : ""
-         }
-          <h1 class="artist-name">${artist.name}</h1>
-          <p class="monthly-listeners">${formatNumber(
-            artist.monthly_listeners
-          )} monthly listeners</p>
-        </div>`;
+        <div class="hero-overlay"></div>
+      </div>
+      <div class="hero-content" data-id="${artist.id}">
+       ${
+         artist.is_verified
+           ? `
+         <div class="verified-badge">
+          <i class="fas fa-check-circle"></i>
+          <span>Verified Artist</span>
+        </div>`
+           : ""
+       }
+        <h1 class="artist-name">${artist.name}</h1>
+        <p class="monthly-listeners">${formatNumber(
+          artist.monthly_listeners
+        )} monthly listeners</p>
+        <button class="follow-btn artist-follow-btn" data-following="${
+          artist.is_following
+        }">${artist.is_following ? "Unfollow" : "Follow"}</button>
+      </div>`;
 
       artistHero.innerHTML = artistHeroHtml;
+
+      // Xử lý nút follow/unfollow cho artist
+      const artistFollowBtn = artistHero.querySelector(".artist-follow-btn");
+      if (artistFollowBtn) {
+        artistFollowBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const btn = e.target;
+          const artistId = btn.closest(".hero-content").dataset.id;
+          const isFollowing = btn.dataset.following === "true";
+
+          try {
+            btn.disabled = true; // Disable button during API call
+
+            if (isFollowing) {
+              await unfollowArtist(artistId);
+              btn.textContent = "Follow";
+              btn.dataset.following = "false";
+            } else {
+              await followArtist(artistId);
+              btn.textContent = "Unfollow";
+              btn.dataset.following = "true";
+            }
+          } catch (error) {
+            console.error("Error following/unfollowing artist:", error);
+            // Revert button state on error
+            btn.textContent = isFollowing ? "Unfollow" : "Follow";
+          } finally {
+            btn.disabled = false; // Re-enable button
+          }
+        });
+      }
 
       // Load và render popular tracks của artist
       const { tracks } = await getArtistPopularTracks(artist.id);
       if (tracks.length === 0) {
         const popularSectionHtml = `
-          <h2 class="section-title">Popular</h2>
-          <div class="track-list">No tracks in playlist</div>`;
+        <h2 class="section-title">Popular</h2>
+        <div class="track-list">No tracks in playlist</div>`;
         popularSection.innerHTML = popularSectionHtml;
       } else {
         const popularSectionHtml =
           `
-          <h2 class="section-title">Popular</h2>
-          <div class="track-list">` +
+        <h2 class="section-title">Popular</h2>
+        <div class="track-list">` +
           tracks
             .map(
               (track, index) => `
-              <div class="track-item">
-                  <div class="track-number">${index + 1}</div>
-                  <div class="track-image">
-                    <img src="${track.image_url}" alt="${track.title}" />
-                  </div>
-                  <div class="track-info">
-                    <div class="track-name">${track.title}</div>
-                  </div>
-                  <div class="track-plays">${track.play_count}</div>
-                  <div class="track-duration">${formatSeconds(
-                    track.duration
-                  )}</div>
-                  <button class="track-menu-btn">
-                    <i class="fas fa-ellipsis-h"></i>
-                  </button>
+            <div class="track-item">
+                <div class="track-number">${index + 1}</div>
+                <div class="track-image">
+                  <img src="${track.image_url}" alt="${track.title}" />
                 </div>
-              `
+                <div class="track-info">
+                  <div class="track-name">${track.title}</div>
+                </div>
+                <div class="track-plays">${track.play_count}</div>
+                <div class="track-duration">${formatSeconds(
+                  track.duration
+                )}</div>
+                <button class="track-menu-btn">
+                  <i class="fas fa-ellipsis-h"></i>
+                </button>
+              </div>
+            `
             )
             .join("") +
           `</div>`;

@@ -295,6 +295,18 @@
   color: #fff;
 }
 
+.owner-btn {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: default;
+  background-color: #1db954; /* xanh Spotify */
+  color: white;
+}
+
 /* create my playlist */
 
 .create-playlist {

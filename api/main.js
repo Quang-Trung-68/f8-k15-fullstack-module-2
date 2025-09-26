@@ -52,7 +52,7 @@ const getArtistPopularTracks = async (artistId) => {
   return response.data;
 };
 
-// follow playlist/unfollow
+// follow/unfollow playlist
 
 const followPlaylist = async (playlistId) => {
   const response = await api.post(`playlists/${playlistId}/follow`);
@@ -61,6 +61,18 @@ const followPlaylist = async (playlistId) => {
 
 const unfollowPlaylist = async (playlistId) => {
   const response = await api.delete(`playlists/${playlistId}/follow`);
+  return response.data;
+};
+
+// follow/unfollow artist
+
+const followArtist = async (artistId) => {
+  const response = await api.post(`artists/${artistId}/follow`);
+  return response.data;
+};
+
+const unfollowArtist = async (artistId) => {
+  const response = await api.delete(`artists/${artistId}/follow`);
   return response.data;
 };
 
@@ -111,4 +123,6 @@ export {
   createPlaylist,
   uploadPlaylistCover,
   updatePlaylist,
+  followArtist,
+  unfollowArtist,
 };
