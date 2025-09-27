@@ -39,7 +39,9 @@ const renderMyPlaylists = async (libraryContent) => {
     .map(
       (playlist) => `
       <div data-id=${playlist.id} class="library-item library-item-playlist">
-        <img src="${playlist.image_url}" alt="${playlist.name}" class="item-image" />
+        <img src="${
+          playlist.image_url !== null ? playlist.image_url : ""
+        }" alt="${playlist.name}" class="item-image" />
         <div class="item-info">
           <div class="item-title">${playlist.name}</div>
           <div class="item-subtitle">Playlist</div>
@@ -465,6 +467,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (e.target.tagName === "DIV") {
           await deletePlaylist(currentPlaylistIdSideBar);
           await renderMyPlaylists(elements.libraryContent);
+          await init();
           hideMenus();
           setupContextMenu();
           showUIPopular(false);
@@ -477,7 +480,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Home navigation
     [elements.logoIcon, elements.homeButton].forEach((el) => {
-      el.addEventListener("click", () => {
+      el.addEventListener("click", async () => {
+        await init();
         showUIPopular(false);
         showUICreatePlaylist(false);
         elements.createPlaylistBtn.disabled = false;
@@ -647,7 +651,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         (playlist) => `
       <div data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
-          <img src="${playlist.image_url}" alt="${playlist.description}" />
+          <img src="${
+            playlist.image_url !== null ? playlist.image_url : ""
+          }" alt="${playlist.description}" />
           <button class="hit-play-btn">
             <i class="fas fa-play"></i>
           </button>
@@ -743,6 +749,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Load and render tracks
         const { tracks } = await getArtistPopularTracks(artist.id);
         elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+        localStorage.setItem("currentArtistId", artist.id);
+        localStorage.setItem("currentTracks", JSON.stringify(tracks));
       });
     });
   };
@@ -785,7 +793,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     volumeHandle: document.querySelector(".volume-handle"),
 
     // API Configuration
-    // apiUrl: "http://spotify.f8team.dev/api/tracks/?limit=5&offset=0",
 
     apiUrl: null,
 
@@ -904,8 +911,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       this.addToHistory(this.currentIndex);
       localStorage.setItem("currentIndex", this.currentIndex);
+      elements.popularSection.innerHTML = renderTracks(
+        JSON.parse(localStorage.getItem("currentTracks")),
+        localStorage.getItem("currentArtistId")
+      );
       this.loadCurrentSong();
-      this.audio.play();
     },
 
     formatTime(sec) {
@@ -1042,9 +1052,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       // Control buttons
-      this.nextBtn.addEventListener("click", () =>
-        this.changeIndexSong(this.NEXT)
-      );
+      this.nextBtn.addEventListener("click", () => {
+        this.audio.pause();
+        this.changeIndexSong(this.NEXT);
+        this.audio.play();
+      });
 
       this.prevBtn.addEventListener("click", () => {
         if (this.audio.currentTime < this.timeToPrev) {
@@ -1113,11 +1125,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("click", (e) => {
     const artistCard = e.target.closest(".artist-card");
     if (artistCard) {
+      player.audio.pause();
       player.apiUrl =
         "https://spotify.f8team.dev" +
         `/api/artists/${artistCard.dataset.id}/tracks/popular`;
       player.init();
-      player.audio.play();
     }
   });
 
