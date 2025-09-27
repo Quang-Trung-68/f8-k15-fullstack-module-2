@@ -758,13 +758,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Start the application
   await init();
 
-  // Audio player
+  // Audio player với xử lý conflict được cải thiện
   const player = {
     NEXT: 1,
     PREV: -1,
     timeToPrev: 2,
 
-    // DOM Elements - Updated selectors for new HTML structure
+    // DOM Elements
     audio: document.querySelector(".player-audio"),
     playerImage: document.querySelector(".player-image"),
     playerTitle: document.querySelector(".player-title"),
@@ -792,10 +792,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     volumeFill: document.querySelector(".volume-fill"),
     volumeHandle: document.querySelector(".volume-handle"),
 
-    // API Configuration
-
-    apiUrl: null,
-
     // Player state
     songs: [],
     historySong: [],
@@ -804,60 +800,88 @@ document.addEventListener("DOMContentLoaded", async () => {
     isRepeat: localStorage.getItem("isRepeat") === "true",
     isShuffle: localStorage.getItem("isShuffle") === "true",
     isLoading: false,
+    isTransitioning: false, // Flag để ngăn conflict
 
-    // Fetch data from API using axios
-    async fetchSongs() {
+    // Utility để xử lý audio play/pause safely
+    async safePlay() {
+      if (this.isTransitioning) return;
+
       try {
-        this.isLoading = true;
-        console.log("Loading songs...");
+        this.isTransitioning = true;
 
-        const response = await axios.get(this.apiUrl, {
-          timeout: 10000,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        // Pause trước khi play để tránh conflict
+        this.audio.pause();
 
-        const data = response.data;
+        // Đợi một chút để đảm bảo pause hoàn thành
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
-        // Transform API data to match our song structure
-        this.songs = data.tracks.map((track) => ({
-          id: track.id,
-          name: track.title,
-          path: track.audio_url,
-          artist: track.artist_name,
-          pathThumb: track.image_url || track.album_cover_image_url,
-          duration: track.duration,
-          albumTitle: track.album_title,
-          playCount: track.play_count,
-        }));
-
-        // Ensure currentIndex is valid
-        if (this.currentIndex >= this.songs.length) {
-          this.currentIndex = 0;
-          localStorage.setItem("currentIndex", this.currentIndex);
+        // Kiểm tra nếu có src valid
+        if (this.audio.src && this.audio.readyState >= 2) {
+          await this.audio.play();
         }
-
-        this.isLoading = false;
-        this.loadCurrentSong();
-        console.log(`Loaded ${this.songs.length} songs`);
       } catch (error) {
-        console.error("Error fetching songs:", error);
-        this.isLoading = false;
-
-        let errorMessage =
-          "Không thể tải danh sách bài hát. Vui lòng thử lại sau.";
-        if (error.code === "ECONNABORTED") {
-          errorMessage =
-            "Kết nối timeout. Vui lòng kiểm tra internet và thử lại.";
-        } else if (error.response) {
-          errorMessage = `Lỗi server: ${error.response.status} - ${error.response.statusText}`;
-        } else if (error.request) {
-          errorMessage =
-            "Không thể kết nối đến server. Vui lòng kiểm tra kết nối internet.";
+        console.warn("Play was interrupted:", error.name);
+        // Retry sau một khoảng thời gian ngắn
+        if (error.name === "AbortError") {
+          setTimeout(() => {
+            if (!this.audio.paused) return;
+            this.audio
+              .play()
+              .catch((e) => console.warn("Retry play failed:", e));
+          }, 100);
         }
+      } finally {
+        this.isTransitioning = false;
+      }
+    },
 
-        alert(errorMessage);
+    safePause() {
+      if (this.isTransitioning) return;
+
+      try {
+        this.isTransitioning = true;
+        this.audio.pause();
+      } finally {
+        setTimeout(() => {
+          this.isTransitioning = false;
+        }, 50);
+      }
+    },
+
+    // Load new playlist/tracks safely
+    async loadNewPlaylist(tracks, artistId = null) {
+      // Stop current playback
+      this.safePause();
+
+      // Reset audio src để tránh conflict
+      this.audio.src = "";
+
+      // Update songs data
+      this.songs = tracks.map((track) => ({
+        id: track.id,
+        name: track.title,
+        path: track.audio_url,
+        artist: track.artist_name,
+        pathThumb: track.image_url || track.album_cover_image_url,
+        duration: track.duration,
+        albumTitle: track.album_title,
+        playCount: track.play_count,
+      }));
+
+      // Reset player state
+      this.currentIndex = 0;
+      this.historySong = [];
+
+      // Save to localStorage
+      localStorage.setItem("currentIndex", this.currentIndex);
+      localStorage.setItem("currentTracks", JSON.stringify(tracks));
+      if (artistId) {
+        localStorage.setItem("currentArtistId", artistId);
+      }
+
+      // Load first song
+      if (this.songs.length > 0) {
+        this.loadCurrentSong();
       }
     },
 
@@ -871,9 +895,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const currentSong = this.getCurrentSong();
       this.playerTitle.textContent = currentSong.name;
       this.playerArtist.textContent = currentSong.artist;
-      this.audio.src = currentSong.path;
       this.playerImage.src = currentSong.pathThumb;
       this.playerImage.alt = currentSong.name;
+
+      // Set audio src and wait for it to load
+      this.audio.src = currentSong.path;
+      this.audio.load(); // Force reload
     },
 
     addToHistory(index) {
@@ -894,13 +921,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       let index;
       do {
         index = Math.floor(Math.random() * this.songs.length);
-      } while (this.historySong.includes(index));
+      } while (this.historySong.includes(index) && this.songs.length > 1);
 
       return index;
     },
 
-    changeIndexSong(step) {
-      if (this.songs.length === 0) return;
+    async changeIndexSong(step) {
+      if (this.songs.length === 0 || this.isTransitioning) return;
+
+      // Stop current playback
+      this.safePause();
 
       if (!this.isShuffle) {
         this.currentIndex =
@@ -911,11 +941,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       this.addToHistory(this.currentIndex);
       localStorage.setItem("currentIndex", this.currentIndex);
-      elements.popularSection.innerHTML = renderTracks(
-        JSON.parse(localStorage.getItem("currentTracks")),
-        localStorage.getItem("currentArtistId")
+
+      // Update UI
+      const currentTracks = JSON.parse(
+        localStorage.getItem("currentTracks") || "[]"
       );
+      const currentArtistId = localStorage.getItem("currentArtistId");
+
+      if (currentTracks.length > 0 && elements.popularSection) {
+        elements.popularSection.innerHTML = renderTracks(
+          currentTracks,
+          currentArtistId
+        );
+      }
+
       this.loadCurrentSong();
+
+      setTimeout(async () => {
+        await this.safePlay();
+      }, 200);
     },
 
     formatTime(sec) {
@@ -1016,14 +1060,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
 
     init() {
-      // Fetch songs from API first
-      this.fetchSongs();
-
-      // Play/Pause button
-      this.playBtn.addEventListener("click", () => {
+      // Play/Pause button với safe handling
+      this.playBtn.addEventListener("click", async () => {
         if (this.songs.length === 0) return;
-        if (this.audio.paused) this.audio.play();
-        else this.audio.pause();
+
+        if (this.audio.paused) {
+          await this.safePlay();
+        } else {
+          this.safePause();
+        }
       });
 
       // Audio event listeners
@@ -1047,20 +1092,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         this.updateProgress();
       });
 
-      this.audio.addEventListener("ended", () => {
-        this.isRepeat ? this.audio.play() : this.changeIndexSong(this.NEXT);
+      this.audio.addEventListener("ended", async () => {
+        if (this.isRepeat) {
+          await this.safePlay();
+        } else {
+          await this.changeIndexSong(this.NEXT);
+        }
       });
 
-      // Control buttons
-      this.nextBtn.addEventListener("click", () => {
-        this.audio.pause();
-        this.changeIndexSong(this.NEXT);
-        this.audio.play();
+      this.audio.addEventListener("error", (e) => {
+        console.error("Audio error:", e);
+        // Try to play next song on error
+        setTimeout(() => {
+          this.changeIndexSong(this.NEXT);
+        }, 1000);
       });
 
-      this.prevBtn.addEventListener("click", () => {
+      // Control buttons với async handling
+      this.nextBtn.addEventListener("click", async () => {
+        await this.changeIndexSong(this.NEXT);
+      });
+
+      this.prevBtn.addEventListener("click", async () => {
         if (this.audio.currentTime < this.timeToPrev) {
-          this.changeIndexSong(this.PREV);
+          await this.changeIndexSong(this.PREV);
         } else {
           this.audio.currentTime = 0;
         }
@@ -1093,21 +1148,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       // Keyboard shortcuts
-      document.addEventListener("keydown", (e) => {
+      document.addEventListener("keydown", async (e) => {
         if (this.songs.length === 0) return;
 
         if (e.code === "Space") {
           e.preventDefault();
-          if (this.audio.paused) this.audio.play();
-          else this.audio.pause();
+          if (this.audio.paused) {
+            await this.safePlay();
+          } else {
+            this.safePause();
+          }
         }
         if (e.code === "ArrowRight") {
           e.preventDefault();
-          this.changeIndexSong(this.NEXT);
+          await this.changeIndexSong(this.NEXT);
         }
         if (e.code === "ArrowLeft") {
           e.preventDefault();
-          this.changeIndexSong(this.PREV);
+          await this.changeIndexSong(this.PREV);
         }
       });
 
@@ -1122,39 +1180,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   };
 
-  document.addEventListener("click", (e) => {
+  // Handle artist card clicks với improved playlist loading
+  document.addEventListener("click", async (e) => {
     const artistCard = e.target.closest(".artist-card");
     if (artistCard) {
-      player.audio.pause();
-      player.apiUrl =
-        "https://spotify.f8team.dev" +
-        `/api/artists/${artistCard.dataset.id}/tracks/popular`;
-      player.init();
+      try {
+        // Get artist tracks
+        const { tracks } = await getArtistPopularTracks(artistCard.dataset.id);
+
+        // Load new playlist safely
+        await player.loadNewPlaylist(tracks, artistCard.dataset.id);
+
+        // Initialize player if not already done
+        if (!player.audio.src) {
+          player.init();
+        }
+      } catch (error) {
+        console.error("Error loading artist tracks:", error);
+      }
+    }
+  });
+
+  // Handle individual track clicks với improved handling
+  document.addEventListener("click", async (e) => {
+    const trackItem = e.target.closest(".track-item");
+    if (trackItem) {
+      try {
+        const index = Number(trackItem.dataset.indexSong);
+        const artistId = trackItem.dataset.artistId;
+
+        // Update current index
+        player.currentIndex = index;
+        player.addToHistory(player.currentIndex);
+        localStorage.setItem("currentIndex", player.currentIndex);
+
+        // Load current song
+        player.loadCurrentSong();
+
+        // Play the song safely
+        await player.safePlay();
+
+        // Update UI
+        const { tracks } = await getArtistPopularTracks(artistId);
+        elements.popularSection.innerHTML = renderTracks(tracks, artistId);
+      } catch (error) {
+        console.error("Error playing track:", error);
+      }
     }
   });
 
   // Initialize player
-  // player.init();
-  // Test click current song
-  document.addEventListener("click", async (e) => {
-    const trackItem = e.target.closest(".track-item");
-    if (trackItem) {
-      player.currentIndex = Number(trackItem.dataset.indexSong);
-      player.addToHistory(player.currentIndex);
-      localStorage.setItem("currentIndex", player.currentIndex);
-      player.loadCurrentSong();
-      player.audio.play();
-      // Load and render tracks
-      const { tracks } = await getArtistPopularTracks(
-        trackItem.dataset.artistId
-      );
-      elements.popularSection.innerHTML = renderTracks(
-        tracks,
-        trackItem.dataset.artistId
-      );
-    }
-  });
+  player.init();
 });
-
-// ======== AUDIO PLAY=========
-document.addEventListener("DOMContentLoaded", async () => {});
