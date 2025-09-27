@@ -261,6 +261,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userInfo");
+    // Clear player data
+    localStorage.removeItem("currentTracks");
+    localStorage.removeItem("currentArtistId");
+    localStorage.removeItem("currentIndex");
     elements.userName.textContent = "";
     elements.actionButtons.style.display = "flex";
   };
@@ -292,6 +296,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       return `<h2 class="section-title">Popular</h2><div class="track-list">No tracks in playlist</div>`;
     }
 
+    const currentIndex = Number(localStorage.getItem("currentIndex")) || 0;
+
     return `
       <h2 class="section-title">Popular</h2>
       <div class="track-list">
@@ -300,11 +306,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             (track, index) => `
           <div data-artist-id="${artistId}" data-index-song="${index}" data-id="${
               track.id
-            }" class="track-item ${
-              index === Number(localStorage.getItem("currentIndex"))
-                ? "playing"
-                : ""
-            }">
+            }" class="track-item ${index === currentIndex ? "playing" : ""}">
             <div class="track-number">${index + 1}</div>
             <div class="track-image">
               <img src="${track.image_url}" alt="${track.title}" />
@@ -718,6 +720,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Load and render tracks
         const { tracks } = await getTrackByPlaylist(playlist.id);
         elements.popularSection.innerHTML = renderTracks(tracks);
+
+        // Save playlist tracks to localStorage
+        localStorage.setItem("currentTracks", JSON.stringify(tracks));
+        localStorage.setItem("currentPlaylistId", playlist.id);
+
+        // Update player if it exists
+        if (window.player && tracks.length > 0) {
+          await window.player.loadNewPlaylist(tracks, null);
+        }
       });
     });
 
@@ -749,14 +760,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Load and render tracks
         const { tracks } = await getArtistPopularTracks(artist.id);
         elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+
+        // Save artist tracks to localStorage
         localStorage.setItem("currentArtistId", artist.id);
         localStorage.setItem("currentTracks", JSON.stringify(tracks));
+
+        // Update player if it exists
+        if (window.player && tracks.length > 0) {
+          await window.player.loadNewPlaylist(tracks, artist.id);
+        }
       });
     });
   };
-
-  // Start the application
-  await init();
 
   // Audio player với xử lý conflict được cải thiện
   const player = {
@@ -800,7 +815,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     isRepeat: localStorage.getItem("isRepeat") === "true",
     isShuffle: localStorage.getItem("isShuffle") === "true",
     isLoading: false,
-    isTransitioning: false, // Flag để ngăn conflict
+    isTransitioning: false,
 
     // Utility để xử lý audio play/pause safely
     async safePlay() {
@@ -885,6 +900,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     },
 
+    // Load data from localStorage on init
+    loadFromStorage() {
+      const currentTracks = JSON.parse(
+        localStorage.getItem("currentTracks") || "[]"
+      );
+      const currentIndex = Number(localStorage.getItem("currentIndex")) || 0;
+
+      if (currentTracks.length > 0) {
+        this.songs = currentTracks.map((track) => ({
+          id: track.id,
+          name: track.title,
+          path: track.audio_url,
+          artist: track.album_title,
+          pathThumb: track.image_url || track.album_cover_image_url,
+          duration: track.duration,
+          albumTitle: track.album_title,
+          playCount: track.play_count,
+        }));
+
+        this.currentIndex = Math.min(currentIndex, this.songs.length - 1);
+        this.loadCurrentSong();
+      }
+    },
+
     getCurrentSong() {
       return this.songs[this.currentIndex];
     },
@@ -925,7 +964,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       return index;
     },
-
+    updatePageTitle(song, isPlaying) {
+      const playingStatus = isPlaying ? "▶️" : "⏸️";
+      document.title = `${playingStatus} ${song.name} - ${song.albumTitle}`;
+    },
     async changeIndexSong(step) {
       if (this.songs.length === 0 || this.isTransitioning) return;
 
@@ -942,7 +984,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       this.addToHistory(this.currentIndex);
       localStorage.setItem("currentIndex", this.currentIndex);
 
-      // Update UI
+      // Update UI từ localStorage
+      this.updateTrackUI();
+
+      this.loadCurrentSong();
+
+      setTimeout(async () => {
+        await this.safePlay();
+      }, 200);
+    },
+
+    // Update track UI without API calls
+    updateTrackUI() {
       const currentTracks = JSON.parse(
         localStorage.getItem("currentTracks") || "[]"
       );
@@ -954,12 +1007,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           currentArtistId
         );
       }
-
-      this.loadCurrentSong();
-
-      setTimeout(async () => {
-        await this.safePlay();
-      }, 200);
     },
 
     formatTime(sec) {
@@ -1060,6 +1107,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
 
     init() {
+      // Load data from localStorage first
+      this.loadFromStorage();
+
       // Play/Pause button với safe handling
       this.playBtn.addEventListener("click", async () => {
         if (this.songs.length === 0) return;
@@ -1073,12 +1123,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Audio event listeners
       this.audio.addEventListener("play", () => {
+        this.updatePageTitle(this.getCurrentSong(), true);
         const icon = this.playBtn.querySelector("i");
         icon.classList.remove("fa-play");
         icon.classList.add("fa-pause");
       });
 
       this.audio.addEventListener("pause", () => {
+        this.updatePageTitle(this.getCurrentSong(), false);
         const icon = this.playBtn.querySelector("i");
         icon.classList.remove("fa-pause");
         icon.classList.add("fa-play");
@@ -1180,34 +1232,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   };
 
-  // Handle artist card clicks với improved playlist loading
-  document.addEventListener("click", async (e) => {
-    const artistCard = e.target.closest(".artist-card");
-    if (artistCard) {
-      try {
-        // Get artist tracks
-        const { tracks } = await getArtistPopularTracks(artistCard.dataset.id);
+  // Make player globally accessible
+  window.player = player;
 
-        // Load new playlist safely
-        await player.loadNewPlaylist(tracks, artistCard.dataset.id);
-
-        // Initialize player if not already done
-        if (!player.audio.src) {
-          player.init();
-        }
-      } catch (error) {
-        console.error("Error loading artist tracks:", error);
-      }
-    }
-  });
-
-  // Handle individual track clicks với improved handling
+  // Handle individual track clicks - OPTIMIZED VERSION (không gọi API)
   document.addEventListener("click", async (e) => {
     const trackItem = e.target.closest(".track-item");
     if (trackItem) {
       try {
         const index = Number(trackItem.dataset.indexSong);
         const artistId = trackItem.dataset.artistId;
+
+        // Lấy dữ liệu tracks từ localStorage thay vì gọi API
+        const currentTracks = JSON.parse(
+          localStorage.getItem("currentTracks") || "[]"
+        );
+
+        if (currentTracks.length === 0) {
+          console.warn("No tracks found in localStorage");
+          return;
+        }
 
         // Update current index
         player.currentIndex = index;
@@ -1222,15 +1266,24 @@ document.addEventListener("DOMContentLoaded", async () => {
           await player.safePlay();
         }, 200);
 
-        // Update UI
-        const { tracks } = await getArtistPopularTracks(artistId);
-        elements.popularSection.innerHTML = renderTracks(tracks, artistId);
+        // Update UI với dữ liệu từ localStorage - không cần gọi API
+        if (elements.popularSection && currentTracks.length > 0) {
+          elements.popularSection.innerHTML = renderTracks(
+            currentTracks,
+            artistId
+          );
+        }
       } catch (error) {
         console.error("Error playing track:", error);
       }
     }
   });
 
+  // Start the application
+  await init();
+
   // Initialize player
   player.init();
+
+  console.log("Music Player Application Initialized Successfully");
 });
