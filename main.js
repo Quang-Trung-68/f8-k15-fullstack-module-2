@@ -1218,7 +1218,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         player.loadCurrentSong();
 
         // Play the song safely
-        await player.safePlay();
+        setTimeout(async () => {
+          await player.safePlay();
+        }, 200);
 
         // Update UI
         const { tracks } = await getArtistPopularTracks(artistId);
