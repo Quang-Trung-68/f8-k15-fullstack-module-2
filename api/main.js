@@ -1,5 +1,7 @@
 import api from "../utils/api.js";
 
+const baseUrlProduction = "https://spotify.f8team.dev/";
+
 // sign up
 const registerApi = async (registerData) => {
   const response = await api.post("auth/register", registerData);
@@ -88,7 +90,9 @@ const createPlaylist = async () => {
     name: "My New Playlist",
     description: "Playlist description",
     is_public: true,
-    image_url: "https://example.com/playlist-cover.jpg",
+    image_url:
+      baseUrlProduction +
+      "/uploads/images/img_23d1c870-dc45-45bb-8a85-b9f830cd5de3.jpg",
   });
   return response.data;
 };

@@ -469,6 +469,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           setupContextMenu();
           showUIPopular(false);
           showUICreatePlaylist(false);
+          elements.createPlaylistBtn.disabled = false;
+          elements.createPlaylistBtn.style.display = "block";
         }
       });
     });
@@ -478,6 +480,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       el.addEventListener("click", () => {
         showUIPopular(false);
         showUICreatePlaylist(false);
+        elements.createPlaylistBtn.disabled = false;
+        elements.createPlaylistBtn.style.display = "block";
       });
     });
 
@@ -487,6 +491,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         showUICreatePlaylist(true);
         const { playlist } = await createPlaylist();
+        elements.createPlaylistBtn.style.display = "none";
+        elements.createPlaylistBtn.disabled = true;
+        elements.playlistName.value = playlist.name;
+        elements.playlistDesc.value = playlist.description;
+        elements.coverPreviewImage.src = playlist.image_url;
+        elements.playlistCoverImage.src = playlist.image_url;
         elements.playlistTitle.textContent = playlist.name;
         elements.playlistTitle.dataset.id = playlist.id;
         await renderMyPlaylists(elements.libraryContent);
@@ -549,6 +559,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const playlist = await getPlaylistById(
           elements.playlistTitle.dataset.id
         );
+        elements.playlistName.value = playlist.name;
+        elements.playlistDesc.value = playlist.description;
+        elements.playlistCoverImage.src = playlist.image_url;
         elements.playlistTitle.textContent = playlist.name;
         elements.playlistTitle.dataset.id = playlist.id;
         await renderMyPlaylists(elements.libraryContent);

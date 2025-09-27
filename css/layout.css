@@ -309,6 +309,10 @@
 
 /* create my playlist */
 
+.create-btn:disabled {
+  cursor: not-allowed;
+}
+
 .create-playlist {
   background: linear-gradient(#333, #000);
   color: #fff;
@@ -521,6 +525,11 @@
 .modal-footer .btn-save:hover {
   background-color: #1db954;
   color: #000;
+}
+
+.modal-policy {
+  font-size: 0.8rem;
+  margin-top: 10px;
 }
 
 /* Player */
