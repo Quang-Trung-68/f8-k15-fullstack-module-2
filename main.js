@@ -18,7 +18,15 @@ import {
   unfollowArtist,
   getMyPlaylists,
   deletePlaylist,
+  getFollowingArtist,
 } from "./api/main.js";
+
+// Global state variables
+let sortByPlaylist = localStorage.getItem("sortByPlaylist");
+let currentPlaylistIdSideBar = null;
+let urlPlaylistCoverImage = null;
+let isCreatingPlaylist = false;
+let eventListenersAdded = false;
 
 // Utility functions
 const formatSeconds = (seconds) => {
@@ -35,7 +43,9 @@ const formatNumber = (num) =>
 
 const renderMyPlaylists = async (libraryContent) => {
   const { playlists } = await getMyPlaylists();
-  const libraryContentHtml = playlists
+  console.log(playlists);
+  const artists = await getFollowingArtist();
+  const playlistContentHtml = playlists
     .map(
       (playlist) => `
       <div data-id=${playlist.id} class="library-item library-item-playlist">
@@ -44,13 +54,30 @@ const renderMyPlaylists = async (libraryContent) => {
         }" alt="${playlist.name}" class="item-image" />
         <div class="item-info">
           <div class="item-title">${playlist.name}</div>
-          <div class="item-subtitle">Playlist</div>
+          <div arial-label="" class="item-subtitle">Playlist • ${
+            playlist.user_display_name
+          }</div>
         </div>
       </div>
     `
     )
     .join("");
-  libraryContent.innerHTML = libraryContentHtml;
+  const artistContentHtml = artists
+    .map(
+      (artist) => `
+      <div data-id=${artist.id} class="library-item library-item-artist">
+        <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
+        artist.name
+      }" class="item-image" />
+        <div class="item-info">
+          <div class="item-title">${artist.name}</div>
+          <div class="item-subtitle">Artist</div>
+        </div>
+      </div>
+    `
+    )
+    .join("");
+  libraryContent.innerHTML = playlistContentHtml + artistContentHtml;
 };
 
 // Main application
@@ -113,11 +140,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     playlistCoverImage: document.querySelector(".playlist-cover-image"),
     saveBtn: document.querySelector(".btn-save"),
   };
-
-  // State variables
-  let sortByPlaylist = localStorage.getItem("sortByPlaylist");
-  let currentPlaylistIdSideBar = null;
-  let urlPlaylistCoverImage = null;
 
   // UI Helper functions
   const showAuthModal = () => {
@@ -188,6 +210,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const closePlaylistModal = () => {
     elements.overlay.classList.add("hidden");
     elements.modal.classList.add("hidden");
+  };
+
+  const resetCreatePlaylistState = () => {
+    isCreatingPlaylist = false;
+    elements.createPlaylistBtn.disabled = false;
+    elements.createPlaylistBtn.style.display = "block";
+    elements.createPlaylistBtn.textContent = "Create Playlist";
   };
 
   // Authentication functions
@@ -397,8 +426,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
-  // Event Listeners Setup
+  // Event Listeners Setup - chỉ được gọi một lần
   const setupEventListeners = () => {
+    // Kiểm tra nếu đã setup rồi thì không setup lại
+    if (eventListenersAdded) return;
+
     // Auth modal events
     elements.signupBtn.addEventListener("click", () => {
       showSignupForm();
@@ -466,7 +498,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Context menu events
     [elements.menuPlaylist, elements.menuArtist].forEach((menu) => {
       menu.addEventListener("click", async (e) => {
-        if (e.target.tagName === "DIV") {
+        if (e.target.closest(".context-menu-delete")) {
           await deletePlaylist(currentPlaylistIdSideBar);
           await renderMyPlaylists(elements.libraryContent);
           await init();
@@ -474,8 +506,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           setupContextMenu();
           showUIPopular(false);
           showUICreatePlaylist(false);
-          elements.createPlaylistBtn.disabled = false;
-          elements.createPlaylistBtn.style.display = "block";
+          resetCreatePlaylistState();
+        } else if (e.target.closest(".context-menu-unfollow")) {
+          await unfollowArtist(currentPlaylistIdSideBar);
+          await renderMyPlaylists(elements.libraryContent);
+          await init();
+          hideMenus();
+          setupContextMenu();
+          showUIPopular(false);
+          showUICreatePlaylist(false);
+          resetCreatePlaylistState();
         }
       });
     });
@@ -486,29 +526,50 @@ document.addEventListener("DOMContentLoaded", async () => {
         await init();
         showUIPopular(false);
         showUICreatePlaylist(false);
-        elements.createPlaylistBtn.disabled = false;
-        elements.createPlaylistBtn.style.display = "block";
+        resetCreatePlaylistState();
       });
     });
 
-    // Create playlist
+    // Create playlist - FIX: Prevent multiple API calls
     elements.createPlaylistBtn.addEventListener("click", async (e) => {
       e.preventDefault();
+      e.stopPropagation();
+
+      // Kiểm tra nếu đang trong quá trình tạo playlist
+      if (isCreatingPlaylist) {
+        console.log("Already creating playlist, please wait...");
+        return;
+      }
+
       try {
+        // Set flag và disable button ngay lập tức
+        isCreatingPlaylist = true;
+        elements.createPlaylistBtn.disabled = true;
+        elements.createPlaylistBtn.textContent = "Creating...";
+
         showUICreatePlaylist(true);
         const { playlist } = await createPlaylist();
+
         elements.createPlaylistBtn.style.display = "none";
-        elements.createPlaylistBtn.disabled = true;
         elements.playlistName.value = playlist.name;
         elements.playlistDesc.value = playlist.description;
         elements.coverPreviewImage.src = playlist.image_url;
         elements.playlistCoverImage.src = playlist.image_url;
         elements.playlistTitle.textContent = playlist.name;
         elements.playlistTitle.dataset.id = playlist.id;
+
         await renderMyPlaylists(elements.libraryContent);
         setupContextMenu();
       } catch (error) {
-        console.error(error);
+        console.error("Error creating playlist:", error);
+        // Reset UI nếu có lỗi
+        elements.createPlaylistBtn.disabled = false;
+        elements.createPlaylistBtn.textContent = "Create Playlist";
+        elements.createPlaylistBtn.style.display = "block";
+        showUICreatePlaylist(false);
+      } finally {
+        // Reset flag sau khi hoàn thành
+        isCreatingPlaylist = false;
       }
     });
 
@@ -622,6 +683,53 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       hideMenus();
     });
+
+    // Handle individual track clicks - OPTIMIZED VERSION
+    document.addEventListener("click", async (e) => {
+      const trackItem = e.target.closest(".track-item");
+      if (trackItem) {
+        try {
+          const index = Number(trackItem.dataset.indexSong);
+          const artistId = trackItem.dataset.artistId;
+
+          // Lấy dữ liệu tracks từ localStorage thay vì gọi API
+          const currentTracks = JSON.parse(
+            localStorage.getItem("currentTracks") || "[]"
+          );
+
+          if (currentTracks.length === 0) {
+            console.warn("No tracks found in localStorage");
+            return;
+          }
+
+          // Update current index
+          player.currentIndex = index;
+          player.addToHistory(player.currentIndex);
+          localStorage.setItem("currentIndex", player.currentIndex);
+
+          // Load current song
+          player.loadCurrentSong();
+
+          // Play the song safely
+          setTimeout(async () => {
+            await player.safePlay();
+          }, 200);
+
+          // Update UI với dữ liệu từ localStorage - không cần gọi API
+          if (elements.popularSection && currentTracks.length > 0) {
+            elements.popularSection.innerHTML = renderTracks(
+              currentTracks,
+              artistId
+            );
+          }
+        } catch (error) {
+          console.error("Error playing track:", error);
+        }
+      }
+    });
+
+    // Mark event listeners as added
+    eventListenersAdded = true;
   };
 
   // Initialize application
@@ -635,7 +743,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       elements.navTabArtists.classList.add("active");
     }
 
-    // Setup event listeners
+    // Setup event listeners chỉ một lần
     setupEventListeners();
 
     // Load user and render playlists
@@ -691,7 +799,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
     elements.artistsGrid.innerHTML = artistsGridHtml;
 
-    // Setup playlist card click events
+    // Setup playlist card click events - chỉ setup khi cần thiết
+    document.querySelectorAll(".hit-card").forEach((card) => {
+      // Remove existing listeners để tránh duplicate
+      card.replaceWith(card.cloneNode(true));
+    });
+
     document.querySelectorAll(".hit-card").forEach((card) => {
       card.addEventListener("click", async () => {
         const playlist = await getPlaylistById(card.dataset.id);
@@ -732,7 +845,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
-    // Setup artist card click events
+    // Setup artist card click events - chỉ setup khi cần thiết
+    document.querySelectorAll(".artist-card").forEach((card) => {
+      // Remove existing listeners để tránh duplicate
+      card.replaceWith(card.cloneNode(true));
+    });
+
     document.querySelectorAll(".artist-card").forEach((card) => {
       card.addEventListener("click", async () => {
         const artist = await getArtistById(card.dataset.id);
@@ -964,10 +1082,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       return index;
     },
+
     updatePageTitle(song, isPlaying) {
       const playingStatus = isPlaying ? "▶️" : "⏸️";
       document.title = `${playingStatus} ${song.name} - ${song.albumTitle}`;
     },
+
     async changeIndexSong(step) {
       if (this.songs.length === 0 || this.isTransitioning) return;
 
@@ -1234,50 +1354,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Make player globally accessible
   window.player = player;
-
-  // Handle individual track clicks - OPTIMIZED VERSION (không gọi API)
-  document.addEventListener("click", async (e) => {
-    const trackItem = e.target.closest(".track-item");
-    if (trackItem) {
-      try {
-        const index = Number(trackItem.dataset.indexSong);
-        const artistId = trackItem.dataset.artistId;
-
-        // Lấy dữ liệu tracks từ localStorage thay vì gọi API
-        const currentTracks = JSON.parse(
-          localStorage.getItem("currentTracks") || "[]"
-        );
-
-        if (currentTracks.length === 0) {
-          console.warn("No tracks found in localStorage");
-          return;
-        }
-
-        // Update current index
-        player.currentIndex = index;
-        player.addToHistory(player.currentIndex);
-        localStorage.setItem("currentIndex", player.currentIndex);
-
-        // Load current song
-        player.loadCurrentSong();
-
-        // Play the song safely
-        setTimeout(async () => {
-          await player.safePlay();
-        }, 200);
-
-        // Update UI với dữ liệu từ localStorage - không cần gọi API
-        if (elements.popularSection && currentTracks.length > 0) {
-          elements.popularSection.innerHTML = renderTracks(
-            currentTracks,
-            artistId
-          );
-        }
-      } catch (error) {
-        console.error("Error playing track:", error);
-      }
-    }
-  });
 
   // Start the application
   await init();

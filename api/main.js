@@ -47,6 +47,21 @@ const getArtistById = async (artistId) => {
   return response.data;
 };
 
+const getFollowingArtist = async () => {
+  const artists = await api.get("artists");
+  const artistsData = artists.data.artists;
+
+  const results = await Promise.all(
+    artistsData.map(async (artist) => {
+      const artistFollowing = await getArtistById(artist.id);
+      return artistFollowing.is_following ? artistFollowing : null;
+    })
+  );
+
+  // Lọc bỏ null
+  return results.filter((artist) => artist !== null);
+};
+
 // tracks
 
 const getTrackByPlaylist = async (playlistId) => {
@@ -141,4 +156,5 @@ export {
   unfollowArtist,
   getMyPlaylists,
   deletePlaylist,
+  getFollowingArtist,
 };
