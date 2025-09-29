@@ -41,13 +41,19 @@ const formatSeconds = (seconds) => {
 const formatNumber = (num) =>
   num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-const renderMyPlaylists = async (libraryContent, typeFilter) => {
+const renderMyPlaylists = async (
+  libraryContent,
+  typeFilter,
+  searchField = null
+) => {
   const { playlists } = await getMyPlaylists();
-  console.log(playlists);
   const artists = await getFollowingArtist();
-  const playlistContentHtml = playlists
-    .map(
-      (playlist) => `
+  let playlistContentHtml;
+  let artistContentHtml;
+  if (!searchField) {
+    playlistContentHtml = playlists
+      .map(
+        (playlist) => `
       <div data-id=${playlist.id} class="library-item library-item-playlist">
         <img src="${
           playlist.image_url !== null ? playlist.image_url : ""
@@ -60,23 +66,64 @@ const renderMyPlaylists = async (libraryContent, typeFilter) => {
         </div>
       </div>
     `
-    )
-    .join("");
-  const artistContentHtml = artists
-    .map(
-      (artist) => `
+      )
+      .join("");
+    artistContentHtml = artists
+      .map(
+        (artist) => `
       <div data-id=${artist.id} class="library-item library-item-artist">
         <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
-        artist.name
-      }" class="item-image" />
+          artist.name
+        }" class="item-image" />
         <div class="item-info">
           <div class="item-title">${artist.name}</div>
           <div class="item-subtitle">Artist</div>
         </div>
       </div>
     `
-    )
-    .join("");
+      )
+      .join("");
+  } else {
+    playlistContentHtml = playlists
+      .filter((playlist) =>
+        playlist.name.toLowerCase().includes(searchField.toLowerCase())
+      )
+      .map(
+        (playlist) => `
+      <div data-id=${playlist.id} class="library-item library-item-playlist">
+        <img src="${
+          playlist.image_url !== null ? playlist.image_url : ""
+        }" alt="${playlist.name}" class="item-image" />
+        <div class="item-info">
+          <div class="item-title">${playlist.name}</div>
+          <div arial-label="" class="item-subtitle">Playlist • ${
+            playlist.user_display_name
+          }</div>
+        </div>
+      </div>
+    `
+      )
+      .join("");
+    artistContentHtml = artists
+      .filter((artist) =>
+        artist.name.toLowerCase().includes(searchField.toLowerCase())
+      )
+      .map(
+        (artist) => `
+      <div data-id=${artist.id} class="library-item library-item-artist">
+        <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
+          artist.name
+        }" class="item-image" />
+        <div class="item-info">
+          <div class="item-title">${artist.name}</div>
+          <div class="item-subtitle">Artist</div>
+        </div>
+      </div>
+    `
+      )
+      .join("");
+  }
+
   if (typeFilter === "all")
     libraryContent.innerHTML = playlistContentHtml + artistContentHtml;
   else if (typeFilter === "playlist")
@@ -478,6 +525,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     elements.searchLibraryInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") console.log(elements.searchLibraryInput.value);
     });
+    let typingTimer; // save setTimeout
+    const delay = 2000; // 2 second
+    elements.searchLibraryInput.addEventListener("input", () => {
+      clearTimeout(typingTimer); // reset if counting
+      typingTimer = setTimeout(async () => {
+        // Do action
+        await renderMyPlaylists(
+          elements.libraryContent,
+          localStorage.getItem("typeFilter"),
+          elements.searchLibraryInput.value
+        );
+        setupContextMenu();
+      }, delay);
+    });
 
     elements.sortBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -493,7 +554,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("sortByPlaylist", true);
       await renderMyPlaylists(elements.libraryContent, "playlist");
       setupContextMenu();
-      await init();
+      // await init();
     });
 
     elements.navTabArtists.addEventListener("click", async () => {
@@ -504,7 +565,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("sortByPlaylist", false);
       await renderMyPlaylists(elements.libraryContent, "artist");
       setupContextMenu();
-      await init();
+      // await init();
     });
 
     // Context menu events
