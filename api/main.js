@@ -35,6 +35,11 @@ const getMyPlaylists = async () => {
   return response.data;
 };
 
+const getUserFollowedPlaylists = async () => {
+  const response = await api.get("me/playlists/followed?limit=20&offset=0");
+  return response.data;
+};
+
 // artists
 
 const getAllArtists = async () => {
@@ -60,6 +65,11 @@ const getFollowingArtist = async () => {
 
   // Lọc bỏ null
   return results.filter((artist) => artist !== null);
+};
+
+const getUserFollowedArtist = async () => {
+  const response = await api.get("me/following?limit=20&offset=0");
+  return response.data;
 };
 
 // tracks
@@ -157,4 +167,6 @@ export {
   getMyPlaylists,
   deletePlaylist,
   getFollowingArtist,
+  getUserFollowedArtist,
+  getUserFollowedPlaylists,
 };

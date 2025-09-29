@@ -19,6 +19,8 @@ import {
   getMyPlaylists,
   deletePlaylist,
   getFollowingArtist,
+  getUserFollowedArtist,
+  getUserFollowedPlaylists,
 } from "./api/main.js";
 
 // Global state variables
@@ -47,13 +49,18 @@ const renderMyPlaylists = async (
   searchField = null
 ) => {
   const { playlists } = await getMyPlaylists();
-  const artists = await getFollowingArtist();
+  const myPlaylists = playlists;
+  const userFollowedPlaylists = await getUserFollowedPlaylists();
+  const followedPlaylists = userFollowedPlaylists.playlists;
+  const { artists } = await getUserFollowedArtist();
+  console.log(artists);
   let playlistContentHtml;
   let artistContentHtml;
   if (!searchField) {
-    playlistContentHtml = playlists
-      .map(
-        (playlist) => `
+    playlistContentHtml =
+      myPlaylists
+        .map(
+          (playlist) => `
       <div data-id=${playlist.id} class="library-item library-item-playlist">
         <img src="${
           playlist.image_url !== null ? playlist.image_url : ""
@@ -66,8 +73,25 @@ const renderMyPlaylists = async (
         </div>
       </div>
     `
-      )
-      .join("");
+        )
+        .join("") +
+      followedPlaylists
+        .map(
+          (playlist) => `
+      <div data-id=${playlist.id} class="library-item library-item-playlist">
+        <img src="${
+          playlist.image_url !== null ? playlist.image_url : ""
+        }" alt="${playlist.name}" class="item-image" />
+        <div class="item-info">
+          <div class="item-title">${playlist.name}</div>
+          <div arial-label="" class="item-subtitle">Playlist • ${
+            playlist.user_display_name
+          }</div>
+        </div>
+      </div>
+    `
+        )
+        .join("");
     artistContentHtml = artists
       .map(
         (artist) => `
@@ -84,12 +108,13 @@ const renderMyPlaylists = async (
       )
       .join("");
   } else {
-    playlistContentHtml = playlists
-      .filter((playlist) =>
-        playlist.name.toLowerCase().includes(searchField.toLowerCase())
-      )
-      .map(
-        (playlist) => `
+    playlistContentHtml =
+      myPlaylists
+        .filter((playlist) =>
+          playlist.name.toLowerCase().includes(searchField.toLowerCase())
+        )
+        .map(
+          (playlist) => `
       <div data-id=${playlist.id} class="library-item library-item-playlist">
         <img src="${
           playlist.image_url !== null ? playlist.image_url : ""
@@ -102,8 +127,28 @@ const renderMyPlaylists = async (
         </div>
       </div>
     `
-      )
-      .join("");
+        )
+        .join("") +
+      followedPlaylists
+        .filter((playlist) =>
+          playlist.name.toLowerCase().includes(searchField.toLowerCase())
+        )
+        .map(
+          (playlist) => `
+      <div data-id=${playlist.id} class="library-item library-item-playlist">
+        <img src="${
+          playlist.image_url !== null ? playlist.image_url : ""
+        }" alt="${playlist.name}" class="item-image" />
+        <div class="item-info">
+          <div class="item-title">${playlist.name}</div>
+          <div arial-label="" class="item-subtitle">Playlist • ${
+            playlist.user_display_name
+          }</div>
+        </div>
+      </div>
+    `
+        )
+        .join("");
     artistContentHtml = artists
       .filter((artist) =>
         artist.name.toLowerCase().includes(searchField.toLowerCase())
@@ -720,7 +765,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     [elements.menuPlaylist, elements.menuArtist].forEach((menu) => {
       menu.addEventListener("click", async (e) => {
         const typeFilter = localStorage.getItem("typeFilter") || "all";
-        if (e.target.closest(".context-menu-delete")) {
+        if (e.target.closest(".context-menu-remove")) {
+          await unfollowPlaylist(currentPlaylistIdSideBar);
+          await renderMyPlaylists(elements.libraryContent, typeFilter);
+          await init();
+          hideMenus();
+          setupContextMenu();
+          showUIPopular(false);
+          showUICreatePlaylist(false);
+          resetCreatePlaylistState();
+        } else if (e.target.closest(".context-menu-delete")) {
           await deletePlaylist(currentPlaylistIdSideBar);
           await renderMyPlaylists(elements.libraryContent, typeFilter);
           await init();
