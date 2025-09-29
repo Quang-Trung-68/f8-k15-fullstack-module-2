@@ -178,6 +178,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     logoIcon: document.querySelector(".fa-spotify"),
     homeButton: document.querySelector(".home-btn"),
     trackItems: document.querySelectorAll(".track-item"),
+    searchInput: document.querySelector(".search-input"),
     // Playlist modal elements
     overlay: document.querySelector(".overlay"),
     modal: document.querySelector(".modal"),
@@ -477,6 +478,78 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
+  // utility functions
+  const attachCardClickEvents = () => {
+    // Hit cards
+    document.querySelectorAll(".hit-card").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const playlist = await getPlaylistById(card.dataset.id);
+        showUIPopular(true);
+        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
+
+        const followBtn = elements.artistHero.querySelector(
+          ".playlist-follow-btn"
+        );
+        if (followBtn) {
+          followBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFollowing = e.target.dataset.following === "true";
+            await handleFollowToggle(
+              "playlist",
+              playlist.id,
+              isFollowing,
+              e.target
+            );
+          });
+        }
+
+        const { tracks } = await getTrackByPlaylist(playlist.id);
+        elements.popularSection.innerHTML = renderTracks(tracks);
+        localStorage.setItem("currentTracks", JSON.stringify(tracks));
+        localStorage.setItem("currentPlaylistId", playlist.id);
+
+        if (window.player && tracks.length > 0) {
+          await window.player.loadNewPlaylist(tracks, null);
+        }
+      });
+    });
+
+    // Artist cards
+    document.querySelectorAll(".artist-card").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const artist = await getArtistById(card.dataset.id);
+        showUIPopular(true);
+        elements.artistHero.innerHTML = renderArtistHero(artist);
+
+        const followBtn =
+          elements.artistHero.querySelector(".artist-follow-btn");
+        if (followBtn) {
+          followBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFollowing = e.target.dataset.following === "true";
+            await handleFollowToggle(
+              "artist",
+              artist.id,
+              isFollowing,
+              e.target
+            );
+          });
+        }
+
+        const { tracks } = await getArtistPopularTracks(artist.id);
+        elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+        localStorage.setItem("currentArtistId", artist.id);
+        localStorage.setItem("currentTracks", JSON.stringify(tracks));
+
+        if (window.player && tracks.length > 0) {
+          await window.player.loadNewPlaylist(tracks, artist.id);
+        }
+      });
+    });
+  };
+
   // Event Listeners Setup - chỉ được gọi một lần
   const setupEventListeners = () => {
     // Kiểm tra nếu đã setup rồi thì không setup lại
@@ -521,12 +594,87 @@ document.addEventListener("DOMContentLoaded", async () => {
       e.stopPropagation();
       toggleSearchInput();
     });
-
-    elements.searchLibraryInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") console.log(elements.searchLibraryInput.value);
-    });
     let typingTimer; // save setTimeout
-    const delay = 2000; // 2 second
+    const delay = 800; // time delay
+
+    elements.searchInput.addEventListener("input", () => {
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(async () => {
+        const searchValue = elements.searchInput.value.toLowerCase().trim();
+
+        // Nếu search rỗng, hiển thị lại tất cả
+        if (!searchValue) {
+          await init(); // Reload lại toàn bộ
+          return;
+        }
+
+        // Lấy data từ API
+        const { playlists } = await getAllPlaylists();
+        const { artists } = await getAllArtists();
+
+        // Filter playlists
+        const filteredPlaylists = playlists.filter((playlist) =>
+          playlist.name.toLowerCase().includes(searchValue)
+        );
+
+        // Filter artists
+        const filteredArtists = artists.filter((artist) =>
+          artist.name.toLowerCase().includes(searchValue)
+        );
+
+        // Render filtered playlists
+        const hitsGridHtml = filteredPlaylists
+          .map(
+            (playlist) => `
+      <div data-id="${playlist.id}" class="hit-card">
+        <div class="hit-card-cover">
+          <img src="${
+            playlist.image_url !== null ? playlist.image_url : ""
+          }" alt="${playlist.description}" />
+          <button class="hit-play-btn">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+        <div class="hit-card-info">
+          <h3 class="hit-card-title">${playlist.name}</h3>
+          <p class="hit-card-artist">${playlist.user_display_name}</p>
+        </div>
+      </div>
+    `
+          )
+          .join("");
+
+        // Render filtered artists
+        const artistsGridHtml = filteredArtists
+          .map(
+            (artist) => `
+      <div data-id="${artist.id}" class="artist-card">
+        <div class="artist-card-cover">
+          <img src="${artist.image_url}" alt="${artist.bio}" />
+          <button class="artist-play-btn">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>
+        <div class="artist-card-info">
+          <h3 class="artist-card-name">${artist.name}</h3>
+          <p class="artist-card-type">${artist.bio}</p>
+        </div>
+      </div>
+    `
+          )
+          .join("");
+
+        // Update UI
+        elements.hitsGrid.innerHTML =
+          hitsGridHtml || '<p style="padding: 20px;">No playlists found</p>';
+        elements.artistsGrid.innerHTML =
+          artistsGridHtml || '<p style="padding: 20px;">No artists found</p>';
+
+        // Re-attach click events cho filtered items
+        attachCardClickEvents();
+      }, delay);
+    });
+
     elements.searchLibraryInput.addEventListener("input", () => {
       clearTimeout(typingTimer); // reset if counting
       typingTimer = setTimeout(async () => {
@@ -554,7 +702,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("sortByPlaylist", true);
       await renderMyPlaylists(elements.libraryContent, "playlist");
       setupContextMenu();
-      // await init();
+      await init();
     });
 
     elements.navTabArtists.addEventListener("click", async () => {
@@ -565,7 +713,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("sortByPlaylist", false);
       await renderMyPlaylists(elements.libraryContent, "artist");
       setupContextMenu();
-      // await init();
+      await init();
     });
 
     // Context menu events
@@ -880,7 +1028,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
     elements.artistsGrid.innerHTML = artistsGridHtml;
 
-    // Setup playlist card click events - chỉ setup khi cần thiết
+    // Setup playlist card click events
     document.querySelectorAll(".hit-card").forEach((card) => {
       // Remove existing listeners để tránh duplicate
       card.replaceWith(card.cloneNode(true));
@@ -968,7 +1116,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
-    // Setup artist card click events - chỉ setup khi cần thiết
+    // Setup artist card click events
     document.querySelectorAll(".artist-card").forEach((card) => {
       // Remove existing listeners để tránh duplicate
       card.replaceWith(card.cloneNode(true));
@@ -1487,7 +1635,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.addEventListener("keydown", async (e) => {
         if (this.songs.length === 0) return;
 
-        if (e.code === "Space") {
+        // Kiểm tra nếu đang focus vào input thì không xử lý Space
+        const activeElement = document.activeElement;
+        const isInputFocused =
+          activeElement &&
+          (activeElement.tagName === "INPUT" ||
+            activeElement.tagName === "TEXTAREA" ||
+            activeElement.isContentEditable);
+
+        if (e.code === "Space" && !isInputFocused) {
           e.preventDefault();
           if (this.audio.paused) {
             await this.safePlay();
@@ -1495,11 +1651,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             this.safePause();
           }
         }
-        if (e.code === "ArrowRight") {
+
+        if (e.code === "ArrowRight" && !isInputFocused) {
           e.preventDefault();
           await this.changeIndexSong(this.NEXT);
         }
-        if (e.code === "ArrowLeft") {
+        if (e.code === "ArrowLeft" && !isInputFocused) {
           e.preventDefault();
           await this.changeIndexSong(this.PREV);
         }
