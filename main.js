@@ -18,9 +18,9 @@ import {
   unfollowArtist,
   getMyPlaylists,
   deletePlaylist,
-  getFollowingArtist,
   getUserFollowedArtist,
   getUserFollowedPlaylists,
+  logoutApi,
 } from "./api/main.js";
 
 // Global state variables
@@ -192,11 +192,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     actionButtons: document.querySelector(".auth-buttons"),
 
     // User elements
-    userAvatar: document.getElementById("userAvatar"),
+    userAvatar: document.querySelector(".user-avatar"),
     userDropdown: document.getElementById("userDropdown"),
     logoutBtn: document.getElementById("logoutBtn"),
     userName: document.querySelector(".user-name"),
-
     // Library elements
     sortBtn: document.querySelector(".sort-btn"),
     sortByTable: document.querySelector(".sort-by-table"),
@@ -223,7 +222,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     logoIcon: document.querySelector(".fa-spotify"),
     homeButton: document.querySelector(".home-btn"),
     trackItems: document.querySelectorAll(".track-item"),
+    playBtnLarge: document.querySelector(".play-btn-large"),
     searchInput: document.querySelector(".search-input"),
+
     // Playlist modal elements
     overlay: document.querySelector(".overlay"),
     modal: document.querySelector(".modal"),
@@ -313,7 +314,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     isCreatingPlaylist = false;
     elements.createPlaylistBtn.disabled = false;
     elements.createPlaylistBtn.style.display = "block";
-    elements.createPlaylistBtn.textContent = "Create Playlist";
+  };
+
+  // Helper function to check authentication before action
+  const requireAuth = (callback) => {
+    return async (e) => {
+      const isAuthentication = localStorage.getItem("isAuthentication");
+      if (isAuthentication !== "true") {
+        e.preventDefault();
+        e.stopPropagation();
+        showLoginForm();
+        showAuthModal();
+        return;
+      }
+      await callback(e);
+    };
   };
 
   // Authentication functions
@@ -324,6 +339,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       elements.userName.textContent =
         userInfo.display_name || data.user.display_name;
       elements.actionButtons.style.display = "none";
+      elements.userAvatar.style.display = "block";
     } catch (error) {
       elements.actionButtons.style.display = "flex";
       throw error;
@@ -352,12 +368,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("accessToken", access_token);
       localStorage.setItem("refreshToken", refresh_token);
       localStorage.setItem("userInfo", JSON.stringify(user));
+      localStorage.setItem("isAuthentication", true);
 
       // Update UI
       elements.userName.textContent = user.display_name;
       elements.actionButtons.style.display = "none";
+      elements.userAvatar.style.display = "block";
       await onLoadUser();
       hideAuthModal();
+
+      // Reload lại toàn bộ app sau khi đăng nhập thành công
+      await init();
     } catch (error) {
       const { details, message } = error.response.data.error;
 
@@ -382,7 +403,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await logoutApi();
+      localStorage.setItem("isAuthentication", false);
+    } catch (error) {
+      console.log(error);
+      throw new Error("Error to logout");
+    }
     hideUserDropdown();
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
@@ -392,7 +420,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     localStorage.removeItem("currentArtistId");
     localStorage.removeItem("currentIndex");
     elements.userName.textContent = "";
+    elements.userAvatar.style.display = "none";
     elements.actionButtons.style.display = "flex";
+
+    // Reload lại app để hiển thị trạng thái chưa đăng nhập
+    await init();
   };
 
   // Follow/Unfollow handlers
@@ -523,78 +555,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
-  // utility functions
-  const attachCardClickEvents = () => {
-    // Hit cards
-    document.querySelectorAll(".hit-card").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const playlist = await getPlaylistById(card.dataset.id);
-        showUIPopular(true);
-        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
-
-        const followBtn = elements.artistHero.querySelector(
-          ".playlist-follow-btn"
-        );
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "playlist",
-              playlist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        const { tracks } = await getTrackByPlaylist(playlist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks);
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-        localStorage.setItem("currentPlaylistId", playlist.id);
-
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, null);
-        }
-      });
-    });
-
-    // Artist cards
-    document.querySelectorAll(".artist-card").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const artist = await getArtistById(card.dataset.id);
-        showUIPopular(true);
-        elements.artistHero.innerHTML = renderArtistHero(artist);
-
-        const followBtn =
-          elements.artistHero.querySelector(".artist-follow-btn");
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "artist",
-              artist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        const { tracks } = await getArtistPopularTracks(artist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
-        localStorage.setItem("currentArtistId", artist.id);
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, artist.id);
-        }
-      });
-    });
-  };
-
   // Event Listeners Setup - chỉ được gọi một lần
   const setupEventListeners = () => {
     // Kiểm tra nếu đã setup rồi thì không setup lại
@@ -716,7 +676,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           artistsGridHtml || '<p style="padding: 20px;">No artists found</p>';
 
         // Re-attach click events cho filtered items
-        attachCardClickEvents();
+        attachCardClickEventsWithAuth();
       }, delay);
     });
 
@@ -730,6 +690,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.searchLibraryInput.value
         );
         setupContextMenu();
+        attachLibraryItemEvents();
       }, delay);
     });
 
@@ -747,7 +708,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("sortByPlaylist", true);
       await renderMyPlaylists(elements.libraryContent, "playlist");
       setupContextMenu();
-      await init();
+      attachLibraryItemEvents();
     });
 
     elements.navTabArtists.addEventListener("click", async () => {
@@ -758,7 +719,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       localStorage.setItem("sortByPlaylist", false);
       await renderMyPlaylists(elements.libraryContent, "artist");
       setupContextMenu();
-      await init();
+      attachLibraryItemEvents();
     });
 
     // Context menu events
@@ -771,6 +732,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await init();
           hideMenus();
           setupContextMenu();
+          attachLibraryItemEvents();
           showUIPopular(false);
           showUICreatePlaylist(false);
           resetCreatePlaylistState();
@@ -780,6 +742,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await init();
           hideMenus();
           setupContextMenu();
+          attachLibraryItemEvents();
           showUIPopular(false);
           showUICreatePlaylist(false);
           resetCreatePlaylistState();
@@ -789,6 +752,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await init();
           hideMenus();
           setupContextMenu();
+          attachLibraryItemEvents();
           showUIPopular(false);
           showUICreatePlaylist(false);
           resetCreatePlaylistState();
@@ -806,48 +770,52 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
-    // Create playlist - FIX: Prevent multiple API calls
-    elements.createPlaylistBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    // Create playlist
+    elements.createPlaylistBtn.addEventListener(
+      "click",
+      requireAuth(async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
 
-      // Kiểm tra nếu đang trong quá trình tạo playlist
-      if (isCreatingPlaylist) {
-        console.log("Already creating playlist, please wait...");
-        return;
-      }
+        // Kiểm tra nếu đang trong quá trình tạo playlist
+        if (isCreatingPlaylist) {
+          console.log("Already creating playlist, please wait...");
+          return;
+        }
 
-      try {
-        // Set flag và disable button ngay lập tức
-        isCreatingPlaylist = true;
-        elements.createPlaylistBtn.disabled = true;
-        elements.createPlaylistBtn.textContent = "Creating...";
+        try {
+          // Set flag và disable button ngay lập tức
+          isCreatingPlaylist = true;
+          elements.createPlaylistBtn.disabled = true;
+          elements.createPlaylistBtn.textContent = "Creating...";
 
-        showUICreatePlaylist(true);
-        const { playlist } = await createPlaylist();
+          showUICreatePlaylist(true);
+          const { playlist } = await createPlaylist();
 
-        elements.createPlaylistBtn.style.display = "none";
-        elements.playlistName.value = playlist.name;
-        elements.playlistDesc.value = playlist.description;
-        elements.coverPreviewImage.src = playlist.image_url;
-        elements.playlistCoverImage.src = playlist.image_url;
-        elements.playlistTitle.textContent = playlist.name;
-        elements.playlistTitle.dataset.id = playlist.id;
-        const typeFilter = localStorage.getItem("typeFilter") || "all";
-        await renderMyPlaylists(elements.libraryContent, typeFilter);
-        setupContextMenu();
-      } catch (error) {
-        console.error("Error creating playlist:", error);
-        // Reset UI nếu có lỗi
-        elements.createPlaylistBtn.disabled = false;
-        elements.createPlaylistBtn.textContent = "Create Playlist";
-        elements.createPlaylistBtn.style.display = "block";
-        showUICreatePlaylist(false);
-      } finally {
-        // Reset flag sau khi hoàn thành
-        isCreatingPlaylist = false;
-      }
-    });
+          elements.createPlaylistBtn.style.display = "none";
+          elements.playlistName.value = playlist.name;
+          elements.playlistDesc.value = playlist.description;
+          elements.coverPreviewImage.src = playlist.image_url;
+          elements.playlistCoverImage.src = playlist.image_url;
+          elements.playlistTitle.textContent = playlist.name;
+          elements.playlistTitle.dataset.id = playlist.id;
+          const typeFilter = localStorage.getItem("typeFilter") || "all";
+          await renderMyPlaylists(elements.libraryContent, typeFilter);
+          setupContextMenu();
+          attachLibraryItemEvents();
+        } catch (error) {
+          console.error("Error creating playlist:", error);
+          // Reset UI nếu có lỗi
+          elements.createPlaylistBtn.disabled = false;
+          elements.createPlaylistBtn.textContent = "Create Playlist";
+          elements.createPlaylistBtn.style.display = "block";
+          showUICreatePlaylist(false);
+        } finally {
+          // Reset flag sau khi hoàn thành
+          isCreatingPlaylist = false;
+        }
+      })
+    );
 
     // Playlist modal events
     elements.playlistTitle.addEventListener("click", openPlaylistModal);
@@ -910,6 +878,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const typeFilter = localStorage.getItem("typeFilter") || "all";
         await renderMyPlaylists(elements.libraryContent, typeFilter);
         setupContextMenu();
+        attachLibraryItemEvents();
       } catch (error) {
         console.error(error);
       } finally {
@@ -1009,32 +978,165 @@ document.addEventListener("DOMContentLoaded", async () => {
     eventListenersAdded = true;
   };
 
+  // Attach click events cho playlist và artist cards với auth check
+  const attachCardClickEventsWithAuth = () => {
+    // Hit cards
+    document.querySelectorAll(".hit-card").forEach((card) => {
+      card.addEventListener(
+        "click",
+        requireAuth(async () => {
+          const playlist = await getPlaylistById(card.dataset.id);
+          showUIPopular(true);
+          elements.artistHero.innerHTML = renderPlaylistHero(playlist);
+
+          const followBtn = elements.artistHero.querySelector(
+            ".playlist-follow-btn"
+          );
+          if (followBtn) {
+            followBtn.addEventListener("click", async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const isFollowing = e.target.dataset.following === "true";
+              await handleFollowToggle(
+                "playlist",
+                playlist.id,
+                isFollowing,
+                e.target
+              );
+            });
+          }
+
+          const { tracks } = await getTrackByPlaylist(playlist.id);
+          elements.popularSection.innerHTML = renderTracks(tracks);
+          localStorage.setItem("currentTracks", JSON.stringify(tracks));
+          localStorage.setItem("currentPlaylistId", playlist.id);
+
+          if (window.player && tracks.length > 0) {
+            await window.player.loadNewPlaylist(tracks, null);
+          }
+        })
+      );
+    });
+
+    // Artist cards
+    document.querySelectorAll(".artist-card").forEach((card) => {
+      card.addEventListener(
+        "click",
+        requireAuth(async () => {
+          const artist = await getArtistById(card.dataset.id);
+          showUIPopular(true);
+          elements.artistHero.innerHTML = renderArtistHero(artist);
+
+          const followBtn =
+            elements.artistHero.querySelector(".artist-follow-btn");
+          if (followBtn) {
+            followBtn.addEventListener("click", async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const isFollowing = e.target.dataset.following === "true";
+              await handleFollowToggle(
+                "artist",
+                artist.id,
+                isFollowing,
+                e.target
+              );
+            });
+          }
+
+          const { tracks } = await getArtistPopularTracks(artist.id);
+          elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+          localStorage.setItem("currentArtistId", artist.id);
+          localStorage.setItem("currentTracks", JSON.stringify(tracks));
+
+          if (window.player && tracks.length > 0) {
+            await window.player.loadNewPlaylist(tracks, artist.id);
+          }
+        })
+      );
+    });
+  };
+
+  // Attach events cho library items (sidebar)
+  const attachLibraryItemEvents = () => {
+    // Library item playlist
+    document.querySelectorAll(".library-item-playlist").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const playlist = await getPlaylistById(card.dataset.id);
+        showUIPopular(true);
+
+        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
+
+        const followBtn = elements.artistHero.querySelector(
+          ".playlist-follow-btn"
+        );
+        if (followBtn) {
+          followBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFollowing = e.target.dataset.following === "true";
+            await handleFollowToggle(
+              "playlist",
+              playlist.id,
+              isFollowing,
+              e.target
+            );
+          });
+        }
+
+        const { tracks } = await getTrackByPlaylist(playlist.id);
+        elements.popularSection.innerHTML = renderTracks(tracks);
+
+        localStorage.setItem("currentTracks", JSON.stringify(tracks));
+        localStorage.setItem("currentPlaylistId", playlist.id);
+
+        if (window.player && tracks.length > 0) {
+          await window.player.loadNewPlaylist(tracks, null);
+        }
+      });
+    });
+
+    // Library item artist
+    document.querySelectorAll(".library-item-artist").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const artist = await getArtistById(card.dataset.id);
+        showUIPopular(true);
+
+        elements.artistHero.innerHTML = renderArtistHero(artist);
+
+        const followBtn =
+          elements.artistHero.querySelector(".artist-follow-btn");
+        if (followBtn) {
+          followBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isFollowing = e.target.dataset.following === "true";
+            await handleFollowToggle(
+              "artist",
+              artist.id,
+              isFollowing,
+              e.target
+            );
+          });
+        }
+
+        const { tracks } = await getArtistPopularTracks(artist.id);
+        elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+
+        localStorage.setItem("currentArtistId", artist.id);
+        localStorage.setItem("currentTracks", JSON.stringify(tracks));
+
+        if (window.player && tracks.length > 0) {
+          await window.player.loadNewPlaylist(tracks, artist.id);
+        }
+      });
+    });
+  };
+
   // Initialize application
   const init = async () => {
-    // Get filter type
-    const typeFilter = localStorage.getItem("typeFilter") || "all";
-
-    // Update UI tabs based on sort state
-    if (typeFilter === "playlist") {
-      elements.navTabPlaylists.classList.add("active");
-      elements.navTabArtists.classList.remove("active");
-    } else if (typeFilter === "artist") {
-      elements.navTabPlaylists.classList.remove("active");
-      elements.navTabArtists.classList.add("active");
-    } else {
-      elements.navTabPlaylists.classList.remove("active");
-      elements.navTabArtists.classList.remove("active");
-    }
-
-    // Setup event listeners chỉ một lần
-    setupEventListeners();
-
-    // Load user and render playlists
-    await onLoadUser();
-    await renderMyPlaylists(elements.libraryContent, typeFilter);
-    setupContextMenu();
-
-    // Load and render main content
+    const isAuthentication = localStorage.getItem("isAuthentication");
+    elements.userAvatar.style.display = "none";
+    // Load and render main content (available for everyone)
     const { playlists } = await getAllPlaylists();
     const { artists } = await getAllArtists();
 
@@ -1082,179 +1184,34 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
     elements.artistsGrid.innerHTML = artistsGridHtml;
 
-    // Setup playlist card click events
-    document.querySelectorAll(".hit-card").forEach((card) => {
-      // Remove existing listeners để tránh duplicate
-      card.replaceWith(card.cloneNode(true));
-    });
+    // Attach click events với auth check
+    attachCardClickEventsWithAuth();
 
-    // Event library item playlist
+    if (isAuthentication === "true") {
+      // Get filter type
+      const typeFilter = localStorage.getItem("typeFilter") || "all";
 
-    document.querySelectorAll(".library-item-playlist").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const playlist = await getPlaylistById(card.dataset.id);
-        showUIPopular(true);
+      // Update UI tabs based on sort state
+      if (typeFilter === "playlist") {
+        elements.navTabPlaylists.classList.add("active");
+        elements.navTabArtists.classList.remove("active");
+      } else if (typeFilter === "artist") {
+        elements.navTabPlaylists.classList.remove("active");
+        elements.navTabArtists.classList.add("active");
+      } else {
+        elements.navTabPlaylists.classList.remove("active");
+        elements.navTabArtists.classList.remove("active");
+      }
 
-        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
+      // Load user and render playlists
+      await onLoadUser();
+      await renderMyPlaylists(elements.libraryContent, typeFilter);
+      setupContextMenu();
+      attachLibraryItemEvents();
+    }
 
-        // Setup follow button
-        const followBtn = elements.artistHero.querySelector(
-          ".playlist-follow-btn"
-        );
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "playlist",
-              playlist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        // Load and render tracks
-        const { tracks } = await getTrackByPlaylist(playlist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks);
-
-        // Save playlist tracks to localStorage
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-        localStorage.setItem("currentPlaylistId", playlist.id);
-
-        // Update player if it exists
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, null);
-        }
-      });
-    });
-
-    document.querySelectorAll(".hit-card").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const playlist = await getPlaylistById(card.dataset.id);
-        showUIPopular(true);
-
-        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
-
-        // Setup follow button
-        const followBtn = elements.artistHero.querySelector(
-          ".playlist-follow-btn"
-        );
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "playlist",
-              playlist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        // Load and render tracks
-        const { tracks } = await getTrackByPlaylist(playlist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks);
-
-        // Save playlist tracks to localStorage
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-        localStorage.setItem("currentPlaylistId", playlist.id);
-
-        // Update player if it exists
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, null);
-        }
-      });
-    });
-
-    // Setup artist card click events
-    document.querySelectorAll(".artist-card").forEach((card) => {
-      // Remove existing listeners để tránh duplicate
-      card.replaceWith(card.cloneNode(true));
-    });
-
-    // Event library item artist
-
-    document.querySelectorAll(".library-item-artist").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const artist = await getArtistById(card.dataset.id);
-        showUIPopular(true);
-
-        elements.artistHero.innerHTML = renderArtistHero(artist);
-
-        // Setup follow button
-        const followBtn =
-          elements.artistHero.querySelector(".artist-follow-btn");
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "artist",
-              artist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        // Load and render tracks
-        const { tracks } = await getArtistPopularTracks(artist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
-
-        // Save artist tracks to localStorage
-        localStorage.setItem("currentArtistId", artist.id);
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-
-        // Update player if it exists
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, artist.id);
-        }
-      });
-    });
-
-    document.querySelectorAll(".artist-card").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const artist = await getArtistById(card.dataset.id);
-        showUIPopular(true);
-
-        elements.artistHero.innerHTML = renderArtistHero(artist);
-
-        // Setup follow button
-        const followBtn =
-          elements.artistHero.querySelector(".artist-follow-btn");
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "artist",
-              artist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        // Load and render tracks
-        const { tracks } = await getArtistPopularTracks(artist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
-
-        // Save artist tracks to localStorage
-        localStorage.setItem("currentArtistId", artist.id);
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-
-        // Update player if it exists
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, artist.id);
-        }
-      });
-    });
+    // Setup event listeners chỉ một lần
+    setupEventListeners();
   };
 
   // Audio player với xử lý conflict được cải thiện
@@ -1611,8 +1568,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       this.audio.addEventListener("play", () => {
         this.updatePageTitle(this.getCurrentSong(), true);
         const icon = this.playBtn.querySelector("i");
+        const iconLarge = elements.playBtnLarge.querySelector("i");
         icon.classList.remove("fa-play");
         icon.classList.add("fa-pause");
+        iconLarge.classList.remove("fa-play");
+        iconLarge.classList.add("fa-pause");
       });
 
       this.audio.addEventListener("pause", () => {
@@ -1620,6 +1580,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const icon = this.playBtn.querySelector("i");
         icon.classList.remove("fa-pause");
         icon.classList.add("fa-play");
+        const iconLarge = elements.playBtnLarge.querySelector("i");
+        iconLarge.classList.add("fa-play");
+        iconLarge.classList.remove("fa-pause");
       });
 
       this.audio.addEventListener("loadedmetadata", () => {
@@ -1713,6 +1676,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (e.code === "ArrowLeft" && !isInputFocused) {
           e.preventDefault();
           await this.changeIndexSong(this.PREV);
+        }
+      });
+
+      // Large play button
+      elements.playBtnLarge.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (this.songs.length === 0) return;
+
+        if (this.audio.paused) {
+          await this.safePlay();
+        } else {
+          this.safePause();
         }
       });
 

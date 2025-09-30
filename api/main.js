@@ -2,7 +2,7 @@ import api from "../utils/api.js";
 
 const baseUrlProduction = "https://spotify.f8team.dev/";
 
-// sign up
+// auth
 const registerApi = async (registerData) => {
   const response = await api.post("auth/register", registerData);
   return response.data;
@@ -18,6 +18,11 @@ const getCurrentUser = async () => {
   return response.data;
 };
 
+const logoutApi = async () => {
+  const response = await api.post("auth/logout");
+  return response.data;
+};
+
 // playlists
 
 const getPlaylistById = async (playlistId) => {
@@ -26,7 +31,7 @@ const getPlaylistById = async (playlistId) => {
 };
 
 const getAllPlaylists = async () => {
-  const response = await api.get("playlists?limit=20&offset=0");
+  const response = await api.get("playlists?limit=40&offset=0");
   return response.data;
 };
 
@@ -43,28 +48,13 @@ const getUserFollowedPlaylists = async () => {
 // artists
 
 const getAllArtists = async () => {
-  const response = await api.get("artists?limit=20&offset=0");
+  const response = await api.get("artists?limit=40&offset=0");
   return response.data;
 };
 
 const getArtistById = async (artistId) => {
   const response = await api.get(`artists/${artistId}`);
   return response.data;
-};
-
-const getFollowingArtist = async () => {
-  const artists = await api.get("artists");
-  const artistsData = artists.data.artists;
-
-  const results = await Promise.all(
-    artistsData.map(async (artist) => {
-      const artistFollowing = await getArtistById(artist.id);
-      return artistFollowing.is_following ? artistFollowing : null;
-    })
-  );
-
-  // Lọc bỏ null
-  return results.filter((artist) => artist !== null);
 };
 
 const getUserFollowedArtist = async () => {
@@ -166,7 +156,7 @@ export {
   unfollowArtist,
   getMyPlaylists,
   deletePlaylist,
-  getFollowingArtist,
   getUserFollowedArtist,
   getUserFollowedPlaylists,
+  logoutApi,
 };

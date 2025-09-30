@@ -248,7 +248,7 @@
 }
 
 .auth-buttons {
-  display: none;
+  /* display: none; */
   align-items: center;
   gap: var(--spacing-md);
 }
