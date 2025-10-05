@@ -794,7 +794,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           // Set flag và disable button ngay lập tức
           isCreatingPlaylist = true;
           elements.createPlaylistBtn.disabled = true;
-          elements.createPlaylistBtn.textContent = "Creating...";
 
           showUICreatePlaylist(true);
           const { playlist } = await createPlaylist();
@@ -1019,9 +1018,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           console.log(tracks);
           localStorage.setItem("currentPlaylistId", playlist.id);
 
-          // if (window.player && tracks.length > 0) {
-          //   await window.player.loadNewPlaylist(tracks, playlist.id);
-          // }
+          if (window.player && tracks.length > 0) {
+            await window.player.loadNewPlaylist(tracks, playlist.id);
+          }
         })
       );
     });
@@ -1323,14 +1322,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Update songs data
       this.songs = tracks.map((track) => ({
-        id: track.id,
-        name: track.title,
-        path: track.audio_url,
-        artist: track.artist_name,
+        id: track.id || track.track_id,
+        name: track.title || track.track_title,
+        path: track.audio_url || track.track_audio_url,
+        artist: track.artist_name || track.track_artist_name,
         pathThumb: track.image_url || track.album_cover_image_url,
-        duration: track.duration,
-        albumTitle: track.album_title,
-        playCount: track.play_count,
+        duration: track.duration || track.track_duration,
+        albumTitle: track.album_title || track.track_album_title,
+        playCount: track.play_count || track.track_play_count,
       }));
 
       // Reset player state
