@@ -463,17 +463,24 @@ document.addEventListener("DOMContentLoaded", async () => {
           .map(
             (track, index) => `
           <div data-artist-id="${artistId}" data-index-song="${index}" data-id="${
-              track.id
+              track.id || track.track_id
             }" class="track-item ${index === currentIndex ? "playing" : ""}">
             <div class="track-number">${index + 1}</div>
             <div class="track-image">
-              <img src="${track.image_url}" alt="${track.title}" />
+              <img src="${
+                track.image_url ||
+                "http://spotify.f8team.dev" + track.track_image_url
+              }" alt="${track.title || track.track_title}" />
             </div>
             <div class="track-info">
-              <div class="track-name">${track.title}</div>
+              <div class="track-name">${track.title || track.track_title}</div>
             </div>
-            <div class="track-plays">${track.play_count}</div>
-            <div class="track-duration">${formatSeconds(track.duration)}</div>
+            <div class="track-plays">${
+              track.play_count || track.track_play_count
+            }</div>
+            <div class="track-duration">${formatSeconds(
+              track.duration || track.track_duration
+            )}</div>
             <button class="track-menu-btn">
               <i class="fas fa-ellipsis-h"></i>
             </button>
@@ -930,7 +937,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       hideMenus();
     });
 
-    // Handle individual track clicks - OPTIMIZED VERSION
+    // Handle individual track clicks
     document.addEventListener("click", async (e) => {
       const trackItem = e.target.closest(".track-item");
       if (trackItem) {
@@ -961,7 +968,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             await player.safePlay();
           }, 200);
 
-          // Update UI với dữ liệu từ localStorage - không cần gọi API
+          // Update UI với dữ liệu từ localStorage
           if (elements.popularSection && currentTracks.length > 0) {
             elements.popularSection.innerHTML = renderTracks(
               currentTracks,
@@ -1009,11 +1016,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           const { tracks } = await getTrackByPlaylist(playlist.id);
           elements.popularSection.innerHTML = renderTracks(tracks);
           localStorage.setItem("currentTracks", JSON.stringify(tracks));
+          console.log(tracks);
           localStorage.setItem("currentPlaylistId", playlist.id);
 
-          if (window.player && tracks.length > 0) {
-            await window.player.loadNewPlaylist(tracks, null);
-          }
+          // if (window.player && tracks.length > 0) {
+          //   await window.player.loadNewPlaylist(tracks, playlist.id);
+          // }
         })
       );
     });
@@ -1044,6 +1052,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
 
           const { tracks } = await getArtistPopularTracks(artist.id);
+          console.log(tracks);
           elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
           localStorage.setItem("currentArtistId", artist.id);
           localStorage.setItem("currentTracks", JSON.stringify(tracks));
@@ -1350,14 +1359,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (currentTracks.length > 0) {
         this.songs = currentTracks.map((track) => ({
-          id: track.id,
-          name: track.title,
-          path: track.audio_url,
-          artist: track.album_title,
+          id: track.id || track.track_id,
+          name: track.title || track.track_title,
+          path: track.audio_url || track.track_audio_url,
+          artist: track.album_title || track.track_album_title,
           pathThumb: track.image_url || track.album_cover_image_url,
-          duration: track.duration,
-          albumTitle: track.album_title,
-          playCount: track.play_count,
+          duration: track.duration || track.track_duration,
+          albumTitle: track.album_title || track.track_album_title,
+          playCount: track.play_count || track.track_play_count,
         }));
 
         this.currentIndex = Math.min(currentIndex, this.songs.length - 1);
