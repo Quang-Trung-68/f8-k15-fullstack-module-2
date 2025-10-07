@@ -241,6 +241,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     saveBtn: document.querySelector(".btn-save"),
   };
 
+  const menuBtn = document.getElementById("menuBtn");
+  const sidebar = document.querySelector(".sidebar");
+  const closeMenuBtn = document.querySelector(".close-menu-icon");
+  closeMenuBtn.addEventListener("click", () => {
+    sidebar.classList.add("hide");
+    sidebar.classList.remove("show");
+  });
+  menuBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("hide");
+    sidebar.classList.toggle("show");
+  });
+
   // UI Helper functions
   const showAuthModal = () => {
     elements.authModal.classList.add("show");
