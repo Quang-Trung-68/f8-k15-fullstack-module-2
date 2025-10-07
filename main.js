@@ -469,10 +469,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             }" class="track-item ${index === currentIndex ? "playing" : ""}">
             <div class="track-number">${index + 1}</div>
             <div class="track-image">
-              <img src="${
-                track.image_url ||
-                "http://spotify.f8team.dev" + track.track_image_url
-              }" alt="${track.title || track.track_title}" />
+              <img src="${track.image_url || track.track_image_url}" alt="${
+              track.title || track.track_title
+            }" />
             </div>
             <div class="track-info">
               <div class="track-name">${track.title || track.track_title}</div>
