@@ -465,7 +465,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           .map(
             (track, index) => `
           <div data-artist-id="${artistId}" data-index-song="${index}" data-id="${
-              track.id || track.track_id
+              track.track_id ? track.track_id : track.id
             }" class="track-item ${index === currentIndex ? "playing" : ""}">
             <div class="track-number">${index + 1}</div>
             <div class="track-image">
@@ -960,9 +960,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           const currentTracks = JSON.parse(
             localStorage.getItem("currentTracks") || "[]"
           );
+
+          // Sửa đây: So sánh với cả id và track_id, convert về string để so sánh chính xác
           const trackIndex = currentTracks.findIndex(
-            (t) => (t.id || t.track_id) === trackId
+            (t) => String(t.track_id || t.id) === String(trackId)
           );
+
           if (trackIndex !== -1) {
             currentTracks[trackIndex].is_liked = !isLiked;
             localStorage.setItem(
