@@ -245,6 +245,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
+  margin-left: auto;
 }
 
 .auth-buttons {
