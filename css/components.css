@@ -469,6 +469,16 @@
   background-color: var(--bg-tertiary);
 }
 
+.track-item .track-is-liked {
+  padding: 10px;
+}
+
+.track-item .track-is-liked:hover {
+  cursor: pointer;
+  background-color: #c4efd9;
+  border-radius: 50%;
+}
+
 .track-number {
   font-size: 16px;
   color: var(--text-secondary);

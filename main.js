@@ -21,6 +21,8 @@ import {
   getUserFollowedArtist,
   getUserFollowedPlaylists,
   logoutApi,
+  likeTrack,
+  unlikeTrack,
 } from "./api/main.js";
 
 // Global state variables
@@ -455,7 +457,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const currentIndex = Number(localStorage.getItem("currentIndex")) || 0;
-
+    console.log(tracks);
     return `
       <h2 class="section-title">Popular</h2>
       <div class="track-list">
@@ -478,6 +480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="track-plays">${
               track.play_count || track.track_play_count
             }</div>
+             <div class="track-is-liked">${track.is_liked ? "💚" : "🩶"}</div>
             <div class="track-duration">${formatSeconds(
               track.duration || track.track_duration
             )}</div>
@@ -938,13 +941,56 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Handle individual track clicks
     document.addEventListener("click", async (e) => {
+      // Xử lý like button trước
+      const likeBtn = e.target.closest(".track-is-liked");
+      if (likeBtn) {
+        e.stopPropagation(); // Ngăn click bubble lên track-item
+
+        const trackItem = likeBtn.closest(".track-item");
+        const trackId = trackItem.dataset.id;
+        const isLiked = likeBtn.textContent.trim() === "💚";
+
+        try {
+          if (isLiked) {
+            await unlikeTrack(trackId);
+          } else {
+            await likeTrack(trackId);
+          }
+
+          // Cập nhật localStorage
+          const currentTracks = JSON.parse(
+            localStorage.getItem("currentTracks") || "[]"
+          );
+          const trackIndex = currentTracks.findIndex(
+            (t) => (t.id || t.track_id) === trackId
+          );
+          if (trackIndex !== -1) {
+            currentTracks[trackIndex].is_liked = !isLiked;
+            localStorage.setItem(
+              "currentTracks",
+              JSON.stringify(currentTracks)
+            );
+
+            // Render lại tracks
+            const currentArtistId = localStorage.getItem("currentArtistId");
+            elements.popularSection.innerHTML = renderTracks(
+              currentTracks,
+              currentArtistId
+            );
+          }
+        } catch (error) {
+          console.error("Error toggling like:", error);
+        }
+        return; // Dừng xử lý
+      }
+
+      // Xử lý click vào track item (play nhạc)
       const trackItem = e.target.closest(".track-item");
       if (trackItem) {
         try {
           const index = Number(trackItem.dataset.indexSong);
           const artistId = trackItem.dataset.artistId;
 
-          // Lấy dữ liệu tracks từ localStorage thay vì gọi API
           const currentTracks = JSON.parse(
             localStorage.getItem("currentTracks") || "[]"
           );
@@ -954,20 +1000,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
           }
 
-          // Update current index
           player.currentIndex = index;
           player.addToHistory(player.currentIndex);
           localStorage.setItem("currentIndex", player.currentIndex);
 
-          // Load current song
           player.loadCurrentSong();
 
-          // Play the song safely
           setTimeout(async () => {
             await player.safePlay();
           }, 200);
 
-          // Update UI với dữ liệu từ localStorage
           if (elements.popularSection && currentTracks.length > 0) {
             elements.popularSection.innerHTML = renderTracks(
               currentTracks,

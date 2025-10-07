@@ -74,6 +74,15 @@ const getArtistPopularTracks = async (artistId) => {
   return response.data;
 };
 
+const likeTrack = async (trackId) => {
+  const response = await api.post(`tracks/${trackId}/like`);
+  return response.data;
+};
+
+const unlikeTrack = async (trackId) => {
+  const response = await api.delete(`tracks/${trackId}/like`);
+  return response.data;
+};
 // follow/unfollow playlist
 
 const followPlaylist = async (playlistId) => {
@@ -159,4 +168,6 @@ export {
   getUserFollowedArtist,
   getUserFollowedPlaylists,
   logoutApi,
+  likeTrack,
+  unlikeTrack,
 };
