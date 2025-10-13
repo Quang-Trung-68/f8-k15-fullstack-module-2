@@ -48,128 +48,75 @@ const formatNumber = (num) =>
 const renderMyPlaylists = async (
   libraryContent,
   typeFilter,
-  searchField = null
+  searchField = null,
+  sortType = null // Thêm tham số sortType
 ) => {
   const { playlists } = await getMyPlaylists();
   const myPlaylists = playlists;
   const userFollowedPlaylists = await getUserFollowedPlaylists();
   const followedPlaylists = userFollowedPlaylists.playlists;
   const { artists } = await getUserFollowedArtist();
-  console.log(artists);
-  let playlistContentHtml;
-  let artistContentHtml;
-  if (!searchField) {
-    playlistContentHtml =
-      myPlaylists
-        .map(
-          (playlist) => `
-      <div data-id=${playlist.id} class="library-item library-item-playlist">
-        <img src="${
-          playlist.image_url !== null ? playlist.image_url : ""
-        }" alt="${playlist.name}" class="item-image" />
-        <div class="item-info">
-          <div class="item-title">${playlist.name}</div>
-          <div arial-label="" class="item-subtitle">Playlist • ${
-            playlist.user_display_name
-          }</div>
-        </div>
-      </div>
-    `
-        )
-        .join("") +
-      followedPlaylists
-        .map(
-          (playlist) => `
-      <div data-id=${playlist.id} class="library-item library-item-playlist">
-        <img src="${
-          playlist.image_url !== null ? playlist.image_url : ""
-        }" alt="${playlist.name}" class="item-image" />
-        <div class="item-info">
-          <div class="item-title">${playlist.name}</div>
-          <div arial-label="" class="item-subtitle">Playlist • ${
-            playlist.user_display_name
-          }</div>
-        </div>
-      </div>
-    `
-        )
-        .join("");
-    artistContentHtml = artists
-      .map(
-        (artist) => `
-      <div data-id=${artist.id} class="library-item library-item-artist">
-        <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
-          artist.name
-        }" class="item-image" />
-        <div class="item-info">
-          <div class="item-title">${artist.name}</div>
-          <div class="item-subtitle">Artist</div>
-        </div>
-      </div>
-    `
-      )
-      .join("");
-  } else {
-    playlistContentHtml =
-      myPlaylists
-        .filter((playlist) =>
-          playlist.name.toLowerCase().includes(searchField.toLowerCase())
-        )
-        .map(
-          (playlist) => `
-      <div data-id=${playlist.id} class="library-item library-item-playlist">
-        <img src="${
-          playlist.image_url !== null ? playlist.image_url : ""
-        }" alt="${playlist.name}" class="item-image" />
-        <div class="item-info">
-          <div class="item-title">${playlist.name}</div>
-          <div arial-label="" class="item-subtitle">Playlist • ${
-            playlist.user_display_name
-          }</div>
-        </div>
-      </div>
-    `
-        )
-        .join("") +
-      followedPlaylists
-        .filter((playlist) =>
-          playlist.name.toLowerCase().includes(searchField.toLowerCase())
-        )
-        .map(
-          (playlist) => `
-      <div data-id=${playlist.id} class="library-item library-item-playlist">
-        <img src="${
-          playlist.image_url !== null ? playlist.image_url : ""
-        }" alt="${playlist.name}" class="item-image" />
-        <div class="item-info">
-          <div class="item-title">${playlist.name}</div>
-          <div arial-label="" class="item-subtitle">Playlist • ${
-            playlist.user_display_name
-          }</div>
-        </div>
-      </div>
-    `
-        )
-        .join("");
-    artistContentHtml = artists
-      .filter((artist) =>
-        artist.name.toLowerCase().includes(searchField.toLowerCase())
-      )
-      .map(
-        (artist) => `
-      <div data-id=${artist.id} class="library-item library-item-artist">
-        <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
-          artist.name
-        }" class="item-image" />
-        <div class="item-info">
-          <div class="item-title">${artist.name}</div>
-          <div class="item-subtitle">Artist</div>
-        </div>
-      </div>
-    `
-      )
-      .join("");
+
+  // Gộp playlists
+  let allPlaylists = [...myPlaylists, ...followedPlaylists];
+  let allArtists = [...artists];
+
+  // Apply search filter
+  if (searchField) {
+    allPlaylists = allPlaylists.filter((playlist) =>
+      playlist.name.toLowerCase().includes(searchField.toLowerCase())
+    );
+    allArtists = allArtists.filter((artist) =>
+      artist.name.toLowerCase().includes(searchField.toLowerCase())
+    );
   }
+
+  // Apply sort - Thêm logic sort
+  if (sortType === "alphabetical") {
+    allPlaylists.sort((a, b) => a.name.localeCompare(b.name));
+    allArtists.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortType === "recents") {
+    // Sort by updated_at (newest first)
+    allPlaylists.sort(
+      (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+    );
+    allArtists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  }
+
+  // Render HTML
+  const playlistContentHtml = allPlaylists
+    .map(
+      (playlist) => `
+    <div data-id=${playlist.id} class="library-item library-item-playlist">
+      <img src="${
+        playlist.image_url !== null ? playlist.image_url : ""
+      }" alt="${playlist.name}" class="item-image" />
+      <div class="item-info">
+        <div class="item-title">${playlist.name}</div>
+        <div arial-label="" class="item-subtitle">Playlist • ${
+          playlist.user_display_name
+        }</div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  const artistContentHtml = allArtists
+    .map(
+      (artist) => `
+    <div data-id=${artist.id} class="library-item library-item-artist">
+      <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
+        artist.name
+      }" class="item-image" />
+      <div class="item-info">
+        <div class="item-title">${artist.name}</div>
+        <div class="item-subtitle">Artist</div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
 
   if (typeFilter === "all")
     libraryContent.innerHTML = playlistContentHtml + artistContentHtml;
@@ -722,23 +669,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Navigation tabs
     elements.navTabPlaylists.addEventListener("click", async () => {
+      // Lấy sort type từ localStorage
+      const currentSort = localStorage.getItem("currentSort") || "recents";
       elements.navTabArtists.classList.remove("active");
       elements.navTabPlaylists.classList.add("active");
       sortByPlaylist = true;
       localStorage.setItem("typeFilter", "playlist");
       localStorage.setItem("sortByPlaylist", true);
-      await renderMyPlaylists(elements.libraryContent, "playlist");
+      await renderMyPlaylists(
+        elements.libraryContent,
+        "playlist",
+        null,
+        currentSort
+      );
       setupContextMenu();
       attachLibraryItemEvents();
     });
 
     elements.navTabArtists.addEventListener("click", async () => {
+      // Lấy sort type từ localStorage
+      const currentSort = localStorage.getItem("currentSort") || "recents";
       elements.navTabPlaylists.classList.remove("active");
       elements.navTabArtists.classList.add("active");
       sortByPlaylist = false;
       localStorage.setItem("typeFilter", "artist");
       localStorage.setItem("sortByPlaylist", false);
-      await renderMyPlaylists(elements.libraryContent, "artist");
+      await renderMyPlaylists(
+        elements.libraryContent,
+        "artist",
+        null,
+        currentSort
+      );
       setupContextMenu();
       attachLibraryItemEvents();
     });
@@ -747,9 +708,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     [elements.menuPlaylist, elements.menuArtist].forEach((menu) => {
       menu.addEventListener("click", async (e) => {
         const typeFilter = localStorage.getItem("typeFilter") || "all";
+        // Lấy sort type từ localStorage
+        const currentSort = localStorage.getItem("currentSort") || "recents";
         if (e.target.closest(".context-menu-remove")) {
           await unfollowPlaylist(currentPlaylistIdSideBar);
-          await renderMyPlaylists(elements.libraryContent, typeFilter);
+          await renderMyPlaylists(
+            elements.libraryContent,
+            typeFilter,
+            null,
+            currentSort
+          );
           await init();
           hideMenus();
           setupContextMenu();
@@ -759,7 +727,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           resetCreatePlaylistState();
         } else if (e.target.closest(".context-menu-delete")) {
           await deletePlaylist(currentPlaylistIdSideBar);
-          await renderMyPlaylists(elements.libraryContent, typeFilter);
+          await renderMyPlaylists(
+            elements.libraryContent,
+            typeFilter,
+            null,
+            currentSort
+          );
           await init();
           hideMenus();
           setupContextMenu();
@@ -769,7 +742,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           resetCreatePlaylistState();
         } else if (e.target.closest(".context-menu-unfollow")) {
           await unfollowArtist(currentPlaylistIdSideBar);
-          await renderMyPlaylists(elements.libraryContent, typeFilter);
+          await renderMyPlaylists(
+            elements.libraryContent,
+            typeFilter,
+            null,
+            currentSort
+          );
           await init();
           hideMenus();
           setupContextMenu();
@@ -778,6 +756,40 @@ document.addEventListener("DOMContentLoaded", async () => {
           showUICreatePlaylist(false);
           resetCreatePlaylistState();
         }
+      });
+    });
+
+    // Sort options event
+    document.querySelectorAll(".sort-by-btn").forEach((option) => {
+      option.addEventListener("click", async () => {
+        const sortType = option.dataset.sort;
+        const typeFilter = localStorage.getItem("typeFilter") || "all";
+        const searchValue = elements.searchLibraryInput.value || null;
+
+        // Lưu sort type vào localStorage
+        localStorage.setItem("currentSort", sortType);
+
+        // Cập nhật text của sort button
+        const sortBtnText =
+          elements.sortBtn.querySelector(".sort-btn-text") ||
+          elements.sortBtn.firstChild;
+        if (sortBtnText) {
+          sortBtnText.textContent = option.textContent.trim();
+        }
+
+        // Re-render với sort mới
+        await renderMyPlaylists(
+          elements.libraryContent,
+          typeFilter,
+          searchValue,
+          sortType
+        );
+
+        setupContextMenu();
+        attachLibraryItemEvents();
+
+        // Đóng sort menu
+        elements.sortByTable.classList.remove("show");
       });
     });
 
@@ -820,7 +832,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.playlistTitle.textContent = playlist.name;
           elements.playlistTitle.dataset.id = playlist.id;
           const typeFilter = localStorage.getItem("typeFilter") || "all";
-          await renderMyPlaylists(elements.libraryContent, typeFilter);
+          await renderMyPlaylists(
+            elements.libraryContent,
+            typeFilter,
+            null,
+            currentSort
+          );
           setupContextMenu();
           attachLibraryItemEvents();
         } catch (error) {
@@ -896,7 +913,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         elements.playlistTitle.textContent = playlist.name;
         elements.playlistTitle.dataset.id = playlist.id;
         const typeFilter = localStorage.getItem("typeFilter") || "all";
-        await renderMyPlaylists(elements.libraryContent, typeFilter);
+        await renderMyPlaylists(
+          elements.libraryContent,
+          typeFilter,
+          null,
+          currentSort
+        );
         setupContextMenu();
         attachLibraryItemEvents();
       } catch (error) {
@@ -1254,6 +1276,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (isAuthentication === "true") {
       // Get filter type
       const typeFilter = localStorage.getItem("typeFilter") || "all";
+      const currentSort = localStorage.getItem("currentSort") || "recents";
+
+      // Cập nhật text của sort button theo currentSort
+      const sortBtnText = elements.sortBtn.querySelector(".sort-btn-text");
+      if (sortBtnText) {
+        sortBtnText.textContent =
+          currentSort === "alphabetical" ? "Alphabetical" : "Recents";
+      }
 
       // Update UI tabs based on sort state
       if (typeFilter === "playlist") {
@@ -1269,7 +1299,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Load user and render playlists
       await onLoadUser();
-      await renderMyPlaylists(elements.libraryContent, typeFilter);
+      await renderMyPlaylists(
+        elements.libraryContent,
+        typeFilter,
+        null,
+        currentSort
+      );
       setupContextMenu();
       attachLibraryItemEvents();
     }
