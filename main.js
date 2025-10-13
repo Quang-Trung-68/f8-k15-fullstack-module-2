@@ -416,7 +416,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const currentIndex = Number(localStorage.getItem("currentIndex")) || 0;
-    console.log(tracks);
     return `
       <h2 class="section-title">Popular</h2>
       <div class="track-list">
@@ -1093,7 +1092,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           const { tracks } = await getTrackByPlaylist(playlist.id);
           elements.popularSection.innerHTML = renderTracks(tracks);
           localStorage.setItem("currentTracks", JSON.stringify(tracks));
-          console.log(tracks);
           localStorage.setItem("currentPlaylistId", playlist.id);
 
           if (window.player && tracks.length > 0) {
@@ -1129,7 +1127,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
 
           const { tracks } = await getArtistPopularTracks(artist.id);
-          console.log(tracks);
           elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
           localStorage.setItem("currentArtistId", artist.id);
           localStorage.setItem("currentTracks", JSON.stringify(tracks));
