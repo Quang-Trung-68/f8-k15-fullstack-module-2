@@ -10,6 +10,11 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <link rel="stylesheet" href="css/reset.css" />
     <link rel="stylesheet" href="css/variables.css" />
     <link rel="stylesheet" href="css/components.css" />
@@ -23,7 +28,7 @@
       <!-- Left Sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <div class="logo">
+          <div class="logo" title="Trang chủ">
             <i class="fab fa-spotify"></i>
           </div>
           <div class="close-menu-icon">❎</div>
@@ -32,20 +37,30 @@
         <nav class="sidebar-nav">
           <div class="nav-section">
             <h2 class="section-title">Your Library</h2>
-            <button class="create-btn">
+            <button class="create-btn" title="Tạo mới playlist">
               <i class="fas fa-plus"></i>
               Create
             </button>
           </div>
 
           <div class="nav-tabs">
-            <button class="nav-tab nav-tab-playlists">Playlists</button>
-            <button class="nav-tab nav-tab-artists">Artists</button>
+            <button
+              class="nav-tab nav-tab-playlists"
+              title="Lọc theo playlists"
+            >
+              Playlists
+            </button>
+            <button class="nav-tab nav-tab-artists" title="Lọc theo nghệ sĩ">
+              Artists
+            </button>
           </div>
 
           <div class="search-library">
             <div class="search-library-container">
-              <button class="search-library-btn">
+              <button
+                class="search-library-btn"
+                title="Tìm kiếm nghệ sĩ hoặc playlist"
+              >
                 <i class="fas fa-search"></i>
               </button>
               <input
@@ -56,25 +71,74 @@
               />
             </div>
             <div class="sort-search-library">
-              <button class="sort-btn">
+              <button class="sort-btn" title="Sắp xếp theo">
                 Recents
-                <i class="fas fa-list"></i>
+                <i class="fas fa-list fas-view-as"></i>
               </button>
               <div class="sort-by-table">
                 <div class="sort-by-table-title">Sort by</div>
-                <button class="sort-by-btn sort-by-recents" data-sort="recents">
+                <button
+                  class="sort-by-btn sort-by-recents"
+                  title="Recents"
+                  data-sort="Recents"
+                >
                   Recents
                 </button>
-                <button class="sort-by-btn sort-by-recently-added">
+                <button
+                  class="sort-by-btn sort-by-recently-added"
+                  data-sort="Recently Added"
+                  title="Recently Added"
+                >
                   Recently Added
                 </button>
                 <button
                   class="sort-by-btn sort-by-recents-alphabetical"
-                  data-sort="alphabetical"
+                  data-sort="Alphabetical"
+                  title="Alphabetical"
                 >
                   Alphabetical
                 </button>
-                <button class="sort-by-btn sort-by-creator">Creator</button>
+                <button
+                  class="sort-by-btn sort-by-creator"
+                  data-sort="Creator"
+                  title="Creator"
+                >
+                  Creator
+                </button>
+                <!-- View Mode Section -->
+                <div class="view-mode-section">
+                  <div class="view-mode-label">View as</div>
+                  <div class="view-mode-buttons">
+                    <button
+                      class="view-mode-btn"
+                      data-view="compact-list"
+                      title="Compact list"
+                    >
+                      <i class="fas fa-list"></i>
+                    </button>
+                    <button
+                      class="view-mode-btn"
+                      data-view="default-list"
+                      title="Default list"
+                    >
+                      <i class="fas fa-bars"></i>
+                    </button>
+                    <button
+                      class="view-mode-btn"
+                      data-view="compact-grid"
+                      title="Compact grid"
+                    >
+                      <i class="fas fa-th"></i>
+                    </button>
+                    <button
+                      class="view-mode-btn"
+                      data-view="default-grid"
+                      title="Default grid"
+                    >
+                      <i class="fas fa-th-large"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -165,10 +229,13 @@
         <header class="main-header">
           <div class="search-container">
             <div class="search-box">
-              <button class="home-btn">
+              <button class="home-btn" title="Trang chủ">
                 <i class="fas fa-home"></i>
               </button>
-              <div class="search-input-wrapper">
+              <div
+                class="search-input-wrapper"
+                title="Tìm kiếm nhạc, ca sĩ, playlist..."
+              >
                 <!-- <i class="fas fa-search search-icon"></i> -->
                 <input
                   type="text"
@@ -185,8 +252,8 @@
               <button type="button" class="auth-btn signup-btn">Sign up</button>
               <button type="button" class="auth-btn login-btn">Log in</button>
             </div>
-            <div class="user-name"></div>
-            <div class="user-menu">
+            <div class="user-name" title="Tên người dùng đang hiển thị"></div>
+            <div class="user-menu" title="Hồ sơ người dùng">
               <button class="user-avatar" id="userAvatar">
                 <img
                   src="placeholder.svg?height=32&width=32"
@@ -416,7 +483,7 @@
 
           <!-- Artist Controls -->
           <section class="artist-controls">
-            <button class="play-btn-large">
+            <button class="play-btn-large" title="Phát nhạc">
               <i class="fas fa-play"></i>
             </button>
           </section>
@@ -577,7 +644,7 @@
             <div class="player-title">--------</div>
             <div class="player-artist">--------</div>
           </div>
-          <button class="add-btn">
+          <button class="add-btn" title="Thêm vào playlist của bạn">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -626,19 +693,19 @@
         </div>
 
         <div class="player-right">
-          <button class="control-btn">
+          <button class="control-btn" title="Bật/tắt mic">
             <i class="fas fa-microphone"></i>
           </button>
           <div class="volume-container">
-            <button class="control-btn">
+            <button class="control-btn" title="Bật/tắt âm lượng">
               <i class="fas fa-volume-down"></i>
             </button>
-            <div class="volume-bar">
+            <div class="volume-bar" title="Điều chỉnh âm lượng">
               <div class="volume-fill" style="width: 50%"></div>
               <div class="volume-handle"></div>
             </div>
           </div>
-          <button class="control-btn">
+          <button class="control-btn" title="Toàn màn hình">
             <i class="fas fa-expand"></i>
           </button>
         </div>

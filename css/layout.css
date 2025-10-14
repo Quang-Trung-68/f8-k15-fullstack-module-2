@@ -125,7 +125,6 @@
   color: white;
   cursor: pointer;
 }
-
 .sort-by-table {
   background-color: #535353;
   display: flex;
@@ -160,16 +159,51 @@
   background-color: #111;
 }
 
+/* View Mode Section */
+.view-mode-section {
+  border-top: 1px solid #666;
+  padding-top: 8px;
+  margin-top: 5px;
+}
+
+.view-mode-label {
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+}
+
+.view-mode-buttons {
+  display: flex;
+  gap: 5px;
+  justify-content: space-between;
+}
+
+.view-mode-btn {
+  color: #fff;
+  padding: 3px 4px;
+  background-color: transparent;
+  border-radius: 4px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.view-mode-btn:hover {
+  background-color: #111;
+}
+
+.view-mode-btn.active {
+  background-color: #111;
+}
+
+.view-mode-btn i {
+  font-size: 1rem;
+}
 .library-content {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-}
-
-/* custom context menu */
-.library-content {
-  display: flex;
-  flex-direction: column;
 }
 
 .library-item {
@@ -185,6 +219,49 @@
   flex-direction: column;
 }
 
+/* Default List View */
+.item-image.view-default-list {
+  display: none;
+}
+
+.item-info.view-default-list {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+/* Compact Grid View */
+.item-info.view-compact-grid {
+  display: none;
+}
+
+.library-content.view-compact-grid {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.library-item.view-compact-grid {
+  width: 33.33%;
+  justify-content: center;
+}
+
+/* Default Grid View */
+.item-info.view-default-grid {
+  display: none;
+}
+
+.library-content.view-default-grid {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.library-item.view-default-grid {
+  width: 50%;
+  justify-content: center;
+}
+
+/* custom context menu */
 /* context menu chung */
 .context-menu {
   position: absolute;

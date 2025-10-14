@@ -60,7 +60,7 @@ const renderMyPlaylists = async (
   // Gộp playlists
   let allPlaylists = [...myPlaylists, ...followedPlaylists];
   let allArtists = [...artists];
-
+  console.log(allPlaylists, allArtists);
   // Apply search filter
   if (searchField) {
     allPlaylists = allPlaylists.filter((playlist) =>
@@ -72,22 +72,32 @@ const renderMyPlaylists = async (
   }
 
   // Apply sort - Thêm logic sort
-  if (sortType === "alphabetical") {
+  if (sortType === "Alphabetical") {
     allPlaylists.sort((a, b) => a.name.localeCompare(b.name));
     allArtists.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sortType === "recents") {
-    // Sort by updated_at (newest first)
+  } else if (sortType === "Recentsly Added") {
+    // Sort by updated_at or followed_at (newest first)
     allPlaylists.sort(
       (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
     );
-    allArtists.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    allArtists.sort(
+      (a, b) => new Date(b.followed_at) - new Date(a.followed_at)
+    );
+  } else if (sortType === "Creator") {
+    // Sort by creator
+    allPlaylists.sort((a, b) =>
+      a.user_display_name.localeCompare(b.user_display_name)
+    );
+    allArtists.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   // Render HTML
   const playlistContentHtml = allPlaylists
     .map(
       (playlist) => `
-    <div data-id=${playlist.id} class="library-item library-item-playlist">
+    <div title="${playlist.name}" data-id=${
+        playlist.id
+      } class="library-item library-item-playlist">
       <img src="${
         playlist.image_url !== null ? playlist.image_url : ""
       }" alt="${playlist.name}" class="item-image" />
@@ -105,7 +115,9 @@ const renderMyPlaylists = async (
   const artistContentHtml = allArtists
     .map(
       (artist) => `
-    <div data-id=${artist.id} class="library-item library-item-artist">
+    <div title="${artist.name}" data-id=${
+        artist.id
+      } class="library-item library-item-artist">
       <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
         artist.name
       }" class="item-image" />
@@ -199,6 +211,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     sidebar.classList.toggle("hide");
     sidebar.classList.toggle("show");
   });
+
+  // Toastify func
+  function showSuccess(message) {
+    Toastify({
+      text: message,
+      duration: 3000,
+      gravity: "right",
+      position: "right",
+      backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+      className: "toast-success",
+    }).showToast();
+  }
+
+  function showError(message) {
+    Toastify({
+      text: message,
+      duration: 3000,
+      gravity: "right",
+      position: "right",
+      backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
+      className: "toast-error",
+    }).showToast();
+  }
 
   // UI Helper functions
   const showAuthModal = () => {
@@ -340,7 +375,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Reload lại toàn bộ app sau khi đăng nhập thành công
       await init();
+      showSuccess("Thành công.");
     } catch (error) {
+      ("Thất bại!.");
       const { details, message } = error.response.data.error;
 
       if (details) {
@@ -400,6 +437,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       btn.textContent = isFollowing ? "Follow" : "Unfollow";
+      btn.title = isFollowing ? "Theo dõi" : "Huỷ theo dõi";
       btn.dataset.following = (!isFollowing).toString();
     } catch (error) {
       console.error(`Error following/unfollowing ${type}:`, error);
@@ -422,7 +460,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         ${tracks
           .map(
             (track, index) => `
-          <div data-artist-id="${artistId}" data-index-song="${index}" data-id="${
+          <div title="${
+            track.title || track.track_title
+          }" data-artist-id="${artistId}" data-index-song="${index}" data-id="${
               track.track_id ? track.track_id : track.id
             }" class="track-item ${index === currentIndex ? "playing" : ""}">
             <div class="track-number">${index + 1}</div>
@@ -437,7 +477,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="track-plays">${
               track.play_count || track.track_play_count
             }</div>
-             <div class="track-is-liked">${track.is_liked ? "💚" : "🩶"}</div>
+             <div title="${
+               track.is_liked ? "Huỷ thích" : "Thích"
+             }" class="track-is-liked">${track.is_liked ? "💚" : "🩶"}</div>
             <div class="track-duration">${formatSeconds(
               track.duration || track.track_duration
             )}</div>
@@ -467,7 +509,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       <p class="monthly-listeners">1,021,833 monthly listeners</p>
       ${
         !playlist.is_owner
-          ? `<button class="follow-btn playlist-follow-btn" data-following="${
+          ? `<button title="${
+              playlist.is_following ? "Huỷ theo dõi" : "Theo dõi"
+            }" class="follow-btn playlist-follow-btn" data-following="${
               playlist.is_following
             }">${playlist.is_following ? "Unfollow" : "Follow"}</button>`
           : `<button type="button" class="owner-btn">Owner</button>`
@@ -494,9 +538,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       <p class="monthly-listeners">${formatNumber(
         artist.monthly_listeners
       )} monthly listeners</p>
-      <button class="follow-btn artist-follow-btn" data-following="${
-        artist.is_following
-      }">
+      <button title="${
+        artist.is_following ? "Huỷ theo dõi" : "Theo dõi"
+      }" class="follow-btn artist-follow-btn" data-following="${
+    artist.is_following
+  }">
         ${artist.is_following ? "Unfollow" : "Follow"}
       </button>
     </div>
@@ -669,7 +715,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Navigation tabs
     elements.navTabPlaylists.addEventListener("click", async () => {
       // Lấy sort type từ localStorage
-      const currentSort = localStorage.getItem("currentSort") || "recents";
+      const currentSort =
+        localStorage.getItem("currentSort") || "Recently Added";
       elements.navTabArtists.classList.remove("active");
       elements.navTabPlaylists.classList.add("active");
       sortByPlaylist = true;
@@ -687,7 +734,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     elements.navTabArtists.addEventListener("click", async () => {
       // Lấy sort type từ localStorage
-      const currentSort = localStorage.getItem("currentSort") || "recents";
+      const currentSort =
+        localStorage.getItem("currentSort") || "Recently Added";
       elements.navTabPlaylists.classList.remove("active");
       elements.navTabArtists.classList.add("active");
       sortByPlaylist = false;
@@ -708,7 +756,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       menu.addEventListener("click", async (e) => {
         const typeFilter = localStorage.getItem("typeFilter") || "all";
         // Lấy sort type từ localStorage
-        const currentSort = localStorage.getItem("currentSort") || "recents";
+        const currentSort =
+          localStorage.getItem("currentSort") || "Recently Added";
         if (e.target.closest(".context-menu-remove")) {
           await unfollowPlaylist(currentPlaylistIdSideBar);
           await renderMyPlaylists(
@@ -788,6 +837,62 @@ document.addEventListener("DOMContentLoaded", async () => {
         attachLibraryItemEvents();
 
         // Đóng sort menu
+        elements.sortByTable.classList.remove("show");
+      });
+    });
+
+    // View mode options event
+    document.querySelectorAll(".view-mode-btn").forEach((option) => {
+      option.addEventListener("click", () => {
+        const viewMode = option.dataset.view;
+        // Save view mode to localStorage
+
+        localStorage.setItem("viewMode", viewMode);
+        if (viewMode === "compact-list")
+          elements.sortBtn.innerHTML =
+            localStorage.getItem("currentSort") + '<i class="fas fa-list"></i>';
+        else if (viewMode === "default-list")
+          elements.sortBtn.innerHTML =
+            localStorage.getItem("currentSort") + '<i class="fas fa-list"></i>';
+        else if (viewMode === "compact-grid")
+          elements.sortBtn.innerHTML =
+            localStorage.getItem("currentSort") + '<i class="fas fa-th"></i>';
+        else if (viewMode === "default-grid")
+          elements.sortBtn.innerHTML =
+            localStorage.getItem("currentSort") +
+            '<i class="fas fa-th-large"></i>';
+        // Remove all view mode classes first
+        const removeClasses = (selector, className) => {
+          document
+            .querySelectorAll(selector)
+            .forEach((el) =>
+              el.classList.remove(
+                "view-default-list",
+                "view-compact-grid",
+                "view-default-grid"
+              )
+            );
+        };
+
+        removeClasses(".item-image");
+        removeClasses(".item-info");
+        removeClasses(".library-content");
+        removeClasses(".library-item");
+
+        // Add new view mode class
+        if (viewMode !== "default") {
+          document
+            .querySelectorAll(".item-image, .item-info")
+            .forEach((el) => el.classList.add(`view-${viewMode}`));
+          document
+            .querySelector(".library-content")
+            ?.classList.add(`view-${viewMode}`);
+          document
+            .querySelectorAll(".library-item")
+            .forEach((el) => el.classList.add(`view-${viewMode}`));
+        }
+
+        // Close sort menu
         elements.sortByTable.classList.remove("show");
       });
     });
@@ -1227,7 +1332,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const hitsGridHtml = playlists
       .map(
         (playlist) => `
-      <div data-id="${playlist.id}" class="hit-card">
+      <div title="${playlist.name}" data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
           <img src="${
             playlist.image_url !== null ? playlist.image_url : ""
@@ -1250,7 +1355,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const artistsGridHtml = artists
       .map(
         (artist) => `
-      <div data-id="${artist.id}" class="artist-card">
+      <div title="${artist.name}" data-id="${artist.id}" class="artist-card">
         <div class="artist-card-cover">
           <img src="${artist.image_url}" alt="${artist.bio}" />
           <button class="artist-play-btn">
