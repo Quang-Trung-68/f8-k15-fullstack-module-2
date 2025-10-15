@@ -60,7 +60,6 @@ const renderMyPlaylists = async (
   // Gộp playlists
   let allPlaylists = [...myPlaylists, ...followedPlaylists];
   let allArtists = [...artists];
-  console.log(allPlaylists, allArtists);
   // Apply search filter
   if (searchField) {
     allPlaylists = allPlaylists.filter((playlist) =>
@@ -900,6 +899,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Home navigation
     [elements.logoIcon, elements.homeButton].forEach((el) => {
       el.addEventListener("click", async () => {
+        document.title = "Sportify";
         await init();
         showUIPopular(false);
         showUICreatePlaylist(false);
@@ -924,10 +924,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           // Set flag và disable button ngay lập tức
           isCreatingPlaylist = true;
           elements.createPlaylistBtn.disabled = true;
+          document.title = "Create new playlist";
 
           showUICreatePlaylist(true);
           const { playlist } = await createPlaylist();
-
+          const currentSort =
+            localStorage.getItem("currentSort") || "Recently Added";
           elements.createPlaylistBtn.style.display = "none";
           elements.playlistName.value = playlist.name;
           elements.playlistDesc.value = playlist.description;
@@ -1004,6 +1006,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
 
       try {
+        const currentSort =
+          localStorage.getItem("currentSort") || "Recently Added";
         await updatePlaylist(
           elements.playlistTitle.dataset.id,
           playlistUpdateData
@@ -1198,7 +1202,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.popularSection.innerHTML = renderTracks(tracks);
           localStorage.setItem("currentTracks", JSON.stringify(tracks));
           localStorage.setItem("currentPlaylistId", playlist.id);
-
+          document.title = playlist.name + " - " + playlist.user_display_name;
           if (window.player && tracks.length > 0) {
             await window.player.loadNewPlaylist(tracks, playlist.id);
           }
@@ -1235,6 +1239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
           localStorage.setItem("currentArtistId", artist.id);
           localStorage.setItem("currentTracks", JSON.stringify(tracks));
+          document.title = artist.name + " - " + artist.bio;
 
           if (window.player && tracks.length > 0) {
             await window.player.loadNewPlaylist(tracks, artist.id);
@@ -1276,6 +1281,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         localStorage.setItem("currentTracks", JSON.stringify(tracks));
         localStorage.setItem("currentPlaylistId", playlist.id);
+        document.title = playlist.name + " - " + playlist.user_display_name;
 
         if (window.player && tracks.length > 0) {
           await window.player.loadNewPlaylist(tracks, null);
@@ -1312,6 +1318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         localStorage.setItem("currentArtistId", artist.id);
         localStorage.setItem("currentTracks", JSON.stringify(tracks));
+        document.title = artist.name + " - " + artist.bio;
 
         if (window.player && tracks.length > 0) {
           await window.player.loadNewPlaylist(tracks, artist.id);
