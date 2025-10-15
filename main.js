@@ -474,10 +474,10 @@ document.addEventListener("DOMContentLoaded", async () => {
               <div class="track-name">${track.title || track.track_title}</div>
             </div>
             <div class="track-plays">${
-              track.play_count || track.track_play_count
+              track.play_count || track.track_play_count || 0
             }</div>
              <div title="${
-               track.is_liked ? "Huỷ thích" : "Thích"
+               track.is_liked ? "Dislike" : "Like"
              }" class="track-is-liked">${track.is_liked ? "💚" : "🩶"}</div>
             <div class="track-duration">${formatSeconds(
               track.duration || track.track_duration
@@ -509,7 +509,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ${
         !playlist.is_owner
           ? `<button title="${
-              playlist.is_following ? "Huỷ theo dõi" : "Theo dõi"
+              playlist.is_following ? "Unfollow playlist" : "Follow playlist"
             }" class="follow-btn playlist-follow-btn" data-following="${
               playlist.is_following
             }">${playlist.is_following ? "Unfollow" : "Follow"}</button>`
@@ -538,7 +538,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         artist.monthly_listeners
       )} monthly listeners</p>
       <button title="${
-        artist.is_following ? "Huỷ theo dõi" : "Theo dõi"
+        artist.is_following ? "Unfollow artist" : "Follow artist"
       }" class="follow-btn artist-follow-btn" data-following="${
     artist.is_following
   }">
@@ -567,7 +567,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
-  // Event Listeners Setup - chỉ được gọi một lần
+  // Event Listeners Setup
   const setupEventListeners = () => {
     // Kiểm tra nếu đã setup rồi thì không setup lại
     if (eventListenersAdded) return;
