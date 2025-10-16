@@ -31,6 +31,7 @@ let currentPlaylistIdSideBar = null;
 let urlPlaylistCoverImage = null;
 let isCreatingPlaylist = false;
 let eventListenersAdded = false;
+const defaultSrcImg = "./public/img/image.png";
 
 // Utility functions
 const formatSeconds = (seconds) => {
@@ -98,7 +99,7 @@ const renderMyPlaylists = async (
         playlist.id
       } class="library-item library-item-playlist">
       <img src="${
-        playlist.image_url !== null ? playlist.image_url : ""
+        playlist.image_url !== null ? playlist.image_url : defaultSrcImg
       }" alt="${playlist.name}" class="item-image" />
       <div class="item-info">
         <div class="item-title">${playlist.name}</div>
@@ -117,9 +118,9 @@ const renderMyPlaylists = async (
     <div title="${artist.name}" data-id=${
         artist.id
       } class="library-item library-item-artist">
-      <img src="${artist.image_url !== null ? artist.image_url : ""}" alt="${
-        artist.name
-      }" class="item-image" />
+      <img src="${
+        artist.image_url !== null ? artist.image_url : defaultSrcImg
+      }" alt="${artist.name}" class="item-image" />
       <div class="item-info">
         <div class="item-title">${artist.name}</div>
         <div class="item-subtitle">Artist</div>
@@ -495,9 +496,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const renderPlaylistHero = (playlist) => `
     <div class="hero-background">
-      <img src="${playlist.image_url}" alt="${
-    playlist.description
-  }" class="hero-image" />
+      <img src="${
+        playlist.image_url !== null ? playlist.image_url : defaultSrcImg
+      }" alt="${playlist.description}" class="hero-image" />
       <div class="hero-overlay"></div>
     </div>
     <div class="hero-content" data-id="${playlist.id}">
@@ -520,7 +521,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const renderArtistHero = (artist) => `
     <div class="hero-background">
-      <img src="${artist.image_url}" alt="${artist.name}" class="hero-image" />
+      <img src="${
+        artist.image_url !== null ? artist.image_url : defaultSrcImg
+      }" alt="${artist.name}" class="hero-image" />
       <div class="hero-overlay"></div>
     </div>
     <div class="hero-content" data-id="${artist.id}">
@@ -646,7 +649,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
           <img src="${
-            playlist.image_url !== null ? playlist.image_url : ""
+            playlist.image_url !== null ? playlist.image_url : defaultSrcImg
           }" alt="${playlist.description}" />
           <button class="hit-play-btn">
             <i class="fas fa-play"></i>
@@ -667,7 +670,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             (artist) => `
       <div data-id="${artist.id}" class="artist-card">
         <div class="artist-card-cover">
-          <img src="${artist.image_url}" alt="${artist.bio}" />
+          <img src="${
+            artist.image_url !== null ? artist.image_url : defaultSrcImg
+          }" alt="${artist.bio}" />
           <button class="artist-play-btn">
             <i class="fas fa-play"></i>
           </button>
@@ -1342,7 +1347,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div title="${playlist.name}" data-id="${playlist.id}" class="hit-card">
         <div class="hit-card-cover">
           <img src="${
-            playlist.image_url !== null ? playlist.image_url : ""
+            playlist.image_url !== null ? playlist.image_url : defaultSrcImg
           }" alt="${playlist.description}" />
           <button class="hit-play-btn">
             <i class="fas fa-play"></i>
@@ -1364,7 +1369,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         (artist) => `
       <div title="${artist.name}" data-id="${artist.id}" class="artist-card">
         <div class="artist-card-cover">
-          <img src="${artist.image_url}" alt="${artist.bio}" />
+          <img src="${
+            artist.image_url !== null ? artist.image_url : defaultSrcImg
+          }" alt="${artist.bio}" />
           <button class="artist-play-btn">
             <i class="fas fa-play"></i>
           </button>
