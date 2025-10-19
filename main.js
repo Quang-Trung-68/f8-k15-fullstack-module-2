@@ -1,147 +1,21 @@
-// Import các API functions
+import { AuthModal } from "./components/auth/AuthModal.js";
+import { UserMenu } from "./components/auth/UserMenu.js";
+import { appState } from "./state/appState.js";
+import { playlistAPI, artistAPI } from "./api/endpoints.js";
+import { playlistService } from "./services/playlistService.js";
+import { artistService } from "./services/artistService.js";
+import { trackService } from "./services/trackService.js";
+import { DEFAULT_IMAGE } from "./utils/constants.js";
 import {
-  registerApi,
-  loginApi,
-  getCurrentUser,
-  getAllPlaylists,
-  getAllArtists,
-  getPlaylistById,
-  getArtistById,
-  getTrackByPlaylist,
-  getArtistPopularTracks,
-  followPlaylist,
-  unfollowPlaylist,
-  createPlaylist,
-  uploadPlaylistCover,
-  updatePlaylist,
-  followArtist,
-  unfollowArtist,
-  getMyPlaylists,
-  deletePlaylist,
-  getUserFollowedArtist,
-  getUserFollowedPlaylists,
-  logoutApi,
-  likeTrack,
-  unlikeTrack,
-} from "./api/main.js";
+  debounce,
+  showToast,
+  formatSeconds,
+  formatNumber,
+  formatTime,
+} from "./utils/helpers.js";
 
-// Global state variables
-let sortByPlaylist = localStorage.getItem("sortByPlaylist");
-let currentPlaylistIdSideBar = null;
-let urlPlaylistCoverImage = null;
-let isCreatingPlaylist = false;
-let eventListenersAdded = false;
-const defaultSrcImg = "./public/img/image.png";
-
-// Utility functions
-const formatSeconds = (seconds) => {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  const m = String(mins).padStart(2, "0");
-  const s = String(secs).padStart(2, "0");
-  return hrs > 0 ? `${hrs}:${m}:${s}` : `${mins}:${s}`;
-};
-
-const formatNumber = (num) =>
-  num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-const renderMyPlaylists = async (
-  libraryContent,
-  typeFilter,
-  searchField = null,
-  sortType = null // Thêm tham số sortType
-) => {
-  const { playlists } = await getMyPlaylists();
-  const myPlaylists = playlists;
-  const userFollowedPlaylists = await getUserFollowedPlaylists();
-  const followedPlaylists = userFollowedPlaylists.playlists;
-  const { artists } = await getUserFollowedArtist();
-
-  // Gộp playlists
-  let allPlaylists = [...myPlaylists, ...followedPlaylists];
-  let allArtists = [...artists];
-  // Apply search filter
-  if (searchField) {
-    allPlaylists = allPlaylists.filter((playlist) =>
-      playlist.name.toLowerCase().includes(searchField.toLowerCase())
-    );
-    allArtists = allArtists.filter((artist) =>
-      artist.name.toLowerCase().includes(searchField.toLowerCase())
-    );
-  }
-
-  // Apply sort - Thêm logic sort
-  if (sortType === "Alphabetical") {
-    allPlaylists.sort((a, b) => a.name.localeCompare(b.name));
-    allArtists.sort((a, b) => a.name.localeCompare(b.name));
-  } else if (sortType === "Recentsly Added") {
-    // Sort by updated_at or followed_at (newest first)
-    allPlaylists.sort(
-      (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
-    );
-    allArtists.sort(
-      (a, b) => new Date(b.followed_at) - new Date(a.followed_at)
-    );
-  } else if (sortType === "Creator") {
-    // Sort by creator
-    allPlaylists.sort((a, b) =>
-      a.user_display_name.localeCompare(b.user_display_name)
-    );
-    allArtists.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  // Render HTML
-  const playlistContentHtml = allPlaylists
-    .map(
-      (playlist) => `
-    <div title="${playlist.name}" data-id=${
-        playlist.id
-      } class="library-item library-item-playlist">
-      <img src="${
-        playlist.image_url !== null ? playlist.image_url : defaultSrcImg
-      }" alt="${playlist.name}" class="item-image" />
-      <div class="item-info">
-        <div class="item-title">${playlist.name}</div>
-        <div arial-label="" class="item-subtitle">Playlist • ${
-          playlist.user_display_name
-        }</div>
-      </div>
-    </div>
-  `
-    )
-    .join("");
-
-  const artistContentHtml = allArtists
-    .map(
-      (artist) => `
-    <div title="${artist.name}" data-id=${
-        artist.id
-      } class="library-item library-item-artist">
-      <img src="${
-        artist.image_url !== null ? artist.image_url : defaultSrcImg
-      }" alt="${artist.name}" class="item-image" />
-      <div class="item-info">
-        <div class="item-title">${artist.name}</div>
-        <div class="item-subtitle">Artist</div>
-      </div>
-    </div>
-  `
-    )
-    .join("");
-
-  if (typeFilter === "all")
-    libraryContent.innerHTML = playlistContentHtml + artistContentHtml;
-  else if (typeFilter === "playlist")
-    libraryContent.innerHTML = playlistContentHtml;
-  else libraryContent.innerHTML = artistContentHtml;
-};
-
-// Main application
 document.addEventListener("DOMContentLoaded", async () => {
-  // DOM Elements
   const elements = {
-    // Auth elements
     signupBtn: document.querySelector(".signup-btn"),
     loginBtn: document.querySelector(".login-btn"),
     authModal: document.getElementById("authModal"),
@@ -151,42 +25,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     showLoginBtn: document.getElementById("showLogin"),
     showSignupBtn: document.getElementById("showSignup"),
     actionButtons: document.querySelector(".auth-buttons"),
-
-    // User elements
     userAvatar: document.querySelector(".user-avatar"),
     userDropdown: document.getElementById("userDropdown"),
     logoutBtn: document.getElementById("logoutBtn"),
     userName: document.querySelector(".user-name"),
-    // Library elements
+    libraryContent: document.querySelector(".library-content"),
+    navTabPlaylists: document.querySelector(".nav-tab-playlists"),
+    navTabArtists: document.querySelector(".nav-tab-artists"),
     sortBtn: document.querySelector(".sort-btn"),
     sortByTable: document.querySelector(".sort-by-table"),
     searchLibraryBtn: document.querySelector(".search-library-btn"),
     searchLibraryInput: document.querySelector(".search-library-input"),
-    navTabPlaylists: document.querySelector(".nav-tab-playlists"),
-    navTabArtists: document.querySelector(".nav-tab-artists"),
-    libraryContent: document.querySelector(".library-content"),
-
-    // Context menu elements
     menuPlaylist: document.getElementById("menuPlaylist"),
     menuArtist: document.getElementById("menuArtist"),
-
-    // Main content elements
     hitsSection: document.querySelector(".hits-section"),
     artistsSection: document.querySelector(".artists-section"),
+    hitsGrid: document.querySelector(".hits-grid"),
+    artistsGrid: document.querySelector(".artists-grid"),
+    searchInput: document.querySelector(".search-input"),
+    logoIcon: document.querySelector(".fa-spotify"),
+    homeButton: document.querySelector(".home-btn"),
     artistHero: document.querySelector(".artist-hero"),
     artistControls: document.querySelector(".artist-controls"),
     popularSection: document.querySelector(".popular-section"),
+    playBtnLarge: document.querySelector(".play-btn-large"),
     createPlaylistSection: document.querySelector(".create-playlist"),
     createPlaylistBtn: document.querySelector(".create-btn"),
-    hitsGrid: document.querySelector(".hits-grid"),
-    artistsGrid: document.querySelector(".artists-grid"),
-    logoIcon: document.querySelector(".fa-spotify"),
-    homeButton: document.querySelector(".home-btn"),
-    trackItems: document.querySelectorAll(".track-item"),
-    playBtnLarge: document.querySelector(".play-btn-large"),
-    searchInput: document.querySelector(".search-input"),
-
-    // Playlist modal elements
     overlay: document.querySelector(".overlay"),
     modal: document.querySelector(".modal"),
     modalCloseBtn: document.querySelector(".modal-close"),
@@ -198,743 +62,643 @@ document.addEventListener("DOMContentLoaded", async () => {
     coverPreviewImage: document.querySelector(".cover-preview-image"),
     playlistCoverImage: document.querySelector(".playlist-cover-image"),
     saveBtn: document.querySelector(".btn-save"),
+    menuBtn: document.getElementById("menuBtn"),
+    sidebar: document.querySelector(".sidebar"),
+    closeMenuBtn: document.querySelector(".close-menu-icon"),
+    // ✅ View Mode elements
+    viewModeButtons: document.querySelectorAll(".view-mode-btn"),
+    viewAsIcon: document.querySelector(".fas-view-as"),
+    sortByMode: document.querySelector(".sort-by-mode"),
   };
 
-  const menuBtn = document.getElementById("menuBtn");
-  const sidebar = document.querySelector(".sidebar");
-  const closeMenuBtn = document.querySelector(".close-menu-icon");
-  closeMenuBtn.addEventListener("click", () => {
-    sidebar.classList.add("hide");
-    sidebar.classList.remove("show");
+  let isCreatingPlaylist = false;
+  let eventListenersAdded = false;
+  let currentContextMenuId = null;
+  let currentViewMode = appState.get("viewMode", "default-list"); // ✅ Lưu view mode
+
+  const player = initializePlayer();
+  window.player = player;
+
+  const authModal = AuthModal(elements, async (user) => {
+    userMenu.updateUI(user);
+    await renderLibrary(appState.getFilterType(), null, appState.getSortType());
+    await init();
   });
-  menuBtn.addEventListener("click", () => {
-    sidebar.classList.toggle("hide");
-    sidebar.classList.toggle("show");
+
+  const userMenu = UserMenu(elements, async () => {
+    elements.libraryContent.innerHTML = "";
+    await init();
   });
 
-  // Toastify func
-  function showSuccess(message) {
-    Toastify({
-      text: message,
-      duration: 3000,
-      gravity: "right",
-      position: "right",
-      backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-      className: "toast-success",
-    }).showToast();
-  }
+  authModal.init();
+  userMenu.init();
 
-  function showError(message) {
-    Toastify({
-      text: message,
-      duration: 3000,
-      gravity: "right",
-      position: "right",
-      backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
-      className: "toast-error",
-    }).showToast();
-  }
-
-  // UI Helper functions
-  const showAuthModal = () => {
-    elements.authModal.classList.add("show");
-    document.body.style.overflow = "hidden";
-  };
-
-  const hideAuthModal = () => {
-    elements.authModal.classList.remove("show");
-    document.body.style.overflow = "auto";
-  };
-
-  const showSignupForm = () => {
-    elements.signupForm.style.display = "block";
-    elements.loginForm.style.display = "none";
-  };
-
-  const showLoginForm = () => {
-    elements.signupForm.style.display = "none";
-    elements.loginForm.style.display = "block";
-  };
-
-  const toggleUserDropdown = () =>
-    elements.userDropdown.classList.toggle("show");
-  const hideUserDropdown = () => elements.userDropdown.classList.remove("show");
-
-  const toggleSearchInput = () => {
-    elements.searchLibraryInput.classList.toggle("show");
-    if (elements.searchLibraryInput.classList.contains("show")) {
-      elements.searchLibraryInput.focus();
-    }
-  };
-
-  const toggleSortTable = () => elements.sortByTable.classList.toggle("show");
-
-  const hideMenus = () => {
-    elements.menuPlaylist.style.display = "none";
-    elements.menuArtist.style.display = "none";
-  };
-
-  const showUIPopular = (isShow) => {
-    const method = isShow ? "add" : "remove";
-    elements.hitsSection.classList[isShow ? "add" : "remove"]("hidden");
-    elements.artistsSection.classList[isShow ? "add" : "remove"]("hidden");
-    elements.artistHero.classList[isShow ? "add" : "remove"]("show");
-    elements.artistControls.classList[isShow ? "add" : "remove"]("show");
-    elements.popularSection.classList[isShow ? "add" : "remove"]("show");
-  };
-
-  const showUICreatePlaylist = (isShow) => {
-    if (isShow) {
-      elements.hitsSection.classList.add("hidden");
-      elements.artistsSection.classList.add("hidden");
-      elements.artistHero.classList.remove("show");
-      elements.artistControls.classList.remove("show");
-      elements.popularSection.classList.remove("show");
-      elements.createPlaylistSection.classList.add("show");
-    } else {
-      elements.createPlaylistSection.classList.remove("show");
-    }
-  };
-
-  const openPlaylistModal = () => {
-    elements.overlay.classList.remove("hidden");
-    elements.modal.classList.remove("hidden");
-  };
-
-  const closePlaylistModal = () => {
-    elements.overlay.classList.add("hidden");
-    elements.modal.classList.add("hidden");
-  };
-
-  const resetCreatePlaylistState = () => {
-    isCreatingPlaylist = false;
-    elements.createPlaylistBtn.disabled = false;
-    elements.createPlaylistBtn.style.display = "block";
-  };
-
-  // Helper function to check authentication before action
   const requireAuth = (callback) => {
     return async (e) => {
-      const isAuthentication = localStorage.getItem("isAuthentication");
-      if (isAuthentication !== "true") {
-        e.preventDefault();
-        e.stopPropagation();
-        showLoginForm();
-        showAuthModal();
+      if (!appState.isAuthenticated()) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        authModal.showLogin();
+        authModal.show();
         return;
       }
       await callback(e);
     };
   };
 
-  // Authentication functions
-  const onLoadUser = async () => {
-    try {
-      const data = await getCurrentUser();
-      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      elements.userName.textContent =
-        userInfo.display_name || data.user.display_name;
-      elements.actionButtons.style.display = "none";
-      elements.userAvatar.style.display = "block";
-    } catch (error) {
-      elements.actionButtons.style.display = "flex";
-      throw error;
-    }
+  const showUIPopular = (isShow) => {
+    elements.hitsSection?.classList[isShow ? "add" : "remove"]("hidden");
+    elements.artistsSection?.classList[isShow ? "add" : "remove"]("hidden");
+    elements.createPlaylistSection?.classList.remove("show");
+    elements.artistHero?.classList[isShow ? "add" : "remove"]("show");
+    elements.artistControls?.classList[isShow ? "add" : "remove"]("show");
+    elements.popularSection?.classList[isShow ? "add" : "remove"]("show");
   };
 
-  const handleAuth = async (isSignup, formData) => {
-    const formGroupEmail = document.querySelector(".form-group-email");
-    const formGroupPassword = document.querySelector(".form-group-password");
-    const errorMessageEmail = document.querySelector(".error-message-email");
-    const errorMessagePassword = document.querySelector(
-      ".error-message-password"
+  const showUICreatePlaylist = (isShow) => {
+    elements.hitsSection?.classList[isShow ? "add" : "remove"]("hidden");
+    elements.artistsSection?.classList[isShow ? "add" : "remove"]("hidden");
+    elements.artistHero?.classList.remove("show");
+    elements.artistControls?.classList.remove("show");
+    elements.popularSection?.classList.remove("show");
+    elements.createPlaylistSection?.classList[isShow ? "add" : "remove"](
+      "show"
     );
+  };
 
+  const renderLibrary = async (
+    filterType,
+    searchField = null,
+    sortType = null
+  ) => {
     try {
-      // Clear previous errors
-      formGroupEmail.classList.remove("invalid");
-      formGroupPassword.classList.remove("invalid");
+      const { playlists, artists } = await playlistService.getAllCombined(
+        filterType,
+        searchField,
+        sortType
+      );
 
-      const data = isSignup
-        ? await registerApi(formData)
-        : await loginApi(formData);
-      const { user, access_token, refresh_token } = data;
+      // ✅ Áp dụng view mode
+      const viewClass = currentViewMode;
+      elements.libraryContent.className = `library-content view-${viewClass}`;
 
-      // Save tokens and user info
-      localStorage.setItem("accessToken", access_token);
-      localStorage.setItem("refreshToken", refresh_token);
-      localStorage.setItem("userInfo", JSON.stringify(user));
-      localStorage.setItem("isAuthentication", true);
+      const playlistHtml = playlists
+        .map(
+          (p) => `
+        <div title="${p.name}" data-id="${
+            p.id
+          }" class="library-item library-item-playlist">
+          <img src="${p.image_url || DEFAULT_IMAGE}" alt="${
+            p.name
+          }" class="item-image" />
+          <div class="item-info">
+            <div class="item-title">${p.name}</div>
+            <div class="item-subtitle">Playlist • ${p.user_display_name}</div>
+          </div>
+        </div>
+      `
+        )
+        .join("");
 
-      // Update UI
-      elements.userName.textContent = user.display_name;
-      elements.actionButtons.style.display = "none";
-      elements.userAvatar.style.display = "block";
-      await onLoadUser();
-      hideAuthModal();
+      const artistHtml = artists
+        .map(
+          (a) => `
+        <div title="${a.name}" data-id="${
+            a.id
+          }" class="library-item library-item-artist">
+          <img src="${a.image_url || DEFAULT_IMAGE}" alt="${
+            a.name
+          }" class="item-image" />
+          <div class="item-info">
+            <div class="item-title">${a.name}</div>
+            <div class="item-subtitle">Artist</div>
+          </div>
+        </div>
+      `
+        )
+        .join("");
 
-      // Reload lại toàn bộ app sau khi đăng nhập thành công
-      await init();
-      showSuccess("Thành công.");
+      elements.libraryContent.innerHTML =
+        filterType === "playlist"
+          ? playlistHtml
+          : filterType === "artist"
+          ? artistHtml
+          : playlistHtml + artistHtml;
+
+      attachLibraryEvents();
     } catch (error) {
-      ("Thất bại!.");
-      const { details, message } = error.response.data.error;
-
-      if (details) {
-        details.forEach((element) => {
-          if (element.field === "email") {
-            formGroupEmail.classList.add("invalid");
-            errorMessageEmail.textContent = element.message;
-          }
-          if (element.field === "password") {
-            formGroupPassword.classList.add("invalid");
-            errorMessagePassword.textContent = element.message;
-          }
-        });
-      }
-
-      if (message) {
-        formGroupEmail.classList.add("invalid");
-        errorMessageEmail.textContent = message;
-      }
-      throw error;
+      console.error("Render library error:", error);
+      elements.libraryContent.innerHTML =
+        '<p style="padding: 20px; color: #999;">Failed to load library</p>';
     }
   };
 
-  const logout = async () => {
-    try {
-      await logoutApi();
-      localStorage.setItem("isAuthentication", false);
-    } catch (error) {
-      console.log(error);
-      throw new Error("Error to logout");
-    }
-    hideUserDropdown();
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("userInfo");
-    // Clear player data
-    localStorage.removeItem("currentTracks");
-    localStorage.removeItem("currentArtistId");
-    localStorage.removeItem("currentIndex");
-    elements.userName.textContent = "";
-    elements.userAvatar.style.display = "none";
-    elements.actionButtons.style.display = "flex";
-
-    // Reload lại app để hiển thị trạng thái chưa đăng nhập
-    await init();
-  };
-
-  // Follow/Unfollow handlers
-  const handleFollowToggle = async (type, id, isFollowing, btn) => {
-    try {
-      btn.disabled = true;
-
-      if (type === "playlist") {
-        isFollowing ? await unfollowPlaylist(id) : await followPlaylist(id);
-      } else {
-        isFollowing ? await unfollowArtist(id) : await followArtist(id);
-      }
-
-      btn.textContent = isFollowing ? "Follow" : "Unfollow";
-      btn.title = isFollowing ? "Theo dõi" : "Huỷ theo dõi";
-      btn.dataset.following = (!isFollowing).toString();
-    } catch (error) {
-      console.error(`Error following/unfollowing ${type}:`, error);
-      btn.textContent = isFollowing ? "Unfollow" : "Follow";
-    } finally {
-      btn.disabled = false;
-    }
-  };
-
-  // Render functions
-  const renderTracks = (tracks, artistId) => {
-    if (tracks.length === 0) {
-      return `<h2 class="section-title">Popular</h2><div class="track-list">No tracks in playlist</div>`;
+  const renderTracks = (tracks, artistId = null) => {
+    if (!tracks || tracks.length === 0) {
+      return `<h2 class="section-title">Popular</h2><div class="track-list"><p style="color: #999;">No tracks available</p></div>`;
     }
 
-    const currentIndex = Number(localStorage.getItem("currentIndex")) || 0;
+    const currentIndex = appState.getCurrentIndex();
+    const currentArtistId = appState.getCurrentArtistId();
+    const currentTracks = appState.getCurrentTracks();
+    const isCurrentPlaylist =
+      JSON.stringify(currentTracks) === JSON.stringify(tracks);
+
     return `
       <h2 class="section-title">Popular</h2>
       <div class="track-list">
         ${tracks
-          .map(
-            (track, index) => `
-          <div title="${
-            track.title || track.track_title
-          }" data-artist-id="${artistId}" data-index-song="${index}" data-id="${
-              track.track_id ? track.track_id : track.id
-            }" class="track-item ${index === currentIndex ? "playing" : ""}">
-            <div class="track-number">${index + 1}</div>
-            <div class="track-image">
-              <img src="${track.image_url || track.track_image_url}" alt="${
-              track.title || track.track_title
-            }" />
+          .map((track, index) => {
+            const trackId = track.track_id || track.id;
+            const isCurrentTrack =
+              isCurrentPlaylist &&
+              index === currentIndex &&
+              (!artistId || artistId === currentArtistId);
+
+            return `
+            <div 
+              title="${track.title || track.track_title}" 
+              data-artist-id="${artistId || ""}" 
+              data-index-song="${index}" 
+              data-id="${trackId}" 
+              class="track-item ${isCurrentTrack ? "playing" : ""}"
+            >
+              <div class="track-number">${index + 1}</div>
+              <div class="track-image">
+                <img src="${
+                  track.image_url || track.track_image_url || DEFAULT_IMAGE
+                }" 
+                     alt="${track.title || track.track_title}" />
+              </div>
+              <div class="track-info">
+                <div class="track-name">${
+                  track.title || track.track_title
+                }</div>
+              </div>
+              <div class="track-plays">${formatNumber(
+                track.play_count || track.track_play_count || 0
+              )}</div>
+              <div title="${
+                track.is_liked ? "Unlike" : "Like"
+              }" class="track-is-liked">
+                ${track.is_liked ? "💚" : "🩶"}
+              </div>
+              <div class="track-duration">${formatSeconds(
+                track.duration || track.track_duration
+              )}</div>
+              <button class="track-menu-btn">
+                <i class="fas fa-ellipsis-h"></i>
+              </button>
             </div>
-            <div class="track-info">
-              <div class="track-name">${track.title || track.track_title}</div>
-            </div>
-            <div class="track-plays">${
-              track.play_count || track.track_play_count || 0
-            }</div>
-             <div title="${
-               track.is_liked ? "Dislike" : "Like"
-             }" class="track-is-liked">${track.is_liked ? "💚" : "🩶"}</div>
-            <div class="track-duration">${formatSeconds(
-              track.duration || track.track_duration
-            )}</div>
-            <button class="track-menu-btn">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-        `
-          )
+          `;
+          })
           .join("")}
       </div>
     `;
   };
 
-  const renderPlaylistHero = (playlist) => `
-    <div class="hero-background">
-      <img src="${
-        playlist.image_url !== null ? playlist.image_url : defaultSrcImg
-      }" alt="${playlist.description}" class="hero-image" />
-      <div class="hero-overlay"></div>
-    </div>
-    <div class="hero-content" data-id="${playlist.id}">
-      <div class="verified-badge">
-        <span>Public playlist - ${playlist.description}</span>
-      </div>
-      <h1 class="artist-name">${playlist.name}</h1>
-      <p class="monthly-listeners">1,021,833 monthly listeners</p>
-      ${
-        !playlist.is_owner
-          ? `<button title="${
-              playlist.is_following ? "Unfollow playlist" : "Follow playlist"
-            }" class="follow-btn playlist-follow-btn" data-following="${
-              playlist.is_following
-            }">${playlist.is_following ? "Unfollow" : "Follow"}</button>`
-          : `<button type="button" class="owner-btn">Owner</button>`
-      }
-    </div>
-  `;
+  const attachLibraryEvents = () => {
+    document.querySelectorAll(".library-item-playlist").forEach((item) => {
+      item.addEventListener("click", async () => {
+        try {
+          const playlistId = item.dataset.id;
+          const playlist = await playlistService.getById(playlistId);
 
-  const renderArtistHero = (artist) => `
-    <div class="hero-background">
-      <img src="${
-        artist.image_url !== null ? artist.image_url : defaultSrcImg
-      }" alt="${artist.name}" class="hero-image" />
-      <div class="hero-overlay"></div>
-    </div>
-    <div class="hero-content" data-id="${artist.id}">
-      ${
-        artist.is_verified
-          ? `
-        <div class="verified-badge">
-          <i class="fas fa-check-circle"></i>
-          <span>Verified Artist</span>
-        </div>`
-          : ""
-      }
-      <h1 class="artist-name">${artist.name}</h1>
-      <p class="monthly-listeners">${formatNumber(
-        artist.monthly_listeners
-      )} monthly listeners</p>
-      <button title="${
-        artist.is_following ? "Unfollow artist" : "Follow artist"
-      }" class="follow-btn artist-follow-btn" data-following="${
-    artist.is_following
-  }">
-        ${artist.is_following ? "Unfollow" : "Follow"}
-      </button>
-    </div>
-  `;
+          showUIPopular(true);
 
-  const setupContextMenu = () => {
-    document.querySelectorAll(".library-item").forEach((item) => {
+          elements.artistHero.innerHTML = `
+            <div class="hero-background">
+              <img src="${playlist.image_url || DEFAULT_IMAGE}" alt="${
+            playlist.name
+          }" class="hero-image" />
+              <div class="hero-overlay"></div>
+            </div>
+            <div class="hero-content" data-id="${
+              playlist.id
+            }" data-type="playlist">
+              <div class="verified-badge"><span>Public playlist</span></div>
+              <h1 class="artist-name">${playlist.name}</h1>
+              <p class="monthly-listeners">${
+                playlist.description || playlist.user_display_name
+              }</p>
+              ${
+                !playlist.is_owner
+                  ? `
+                <button class="follow-btn playlist-follow-btn" data-id="${
+                  playlist.id
+                }" data-following="${playlist.is_following}">
+                  ${playlist.is_following ? "Following" : "Follow"}
+                </button>
+              `
+                  : '<button type="button" class="owner-btn">Owner</button>'
+              }
+            </div>
+          `;
+
+          const tracks = await playlistService.getTracks(playlist.id);
+          elements.popularSection.innerHTML = renderTracks(tracks, null);
+
+          appState.setCurrentTracks(tracks);
+          appState.setCurrentArtistId(null);
+
+          attachHeroEvents();
+        } catch (error) {
+          console.error("Load playlist error:", error);
+          showToast("Failed to load playlist", "error");
+        }
+      });
+
       item.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        hideMenus();
-        currentPlaylistIdSideBar = item.dataset.id;
+        currentContextMenuId = item.dataset.id;
+        elements.menuPlaylist.style.display = "block";
+        elements.menuPlaylist.style.left = `${e.pageX}px`;
+        elements.menuPlaylist.style.top = `${e.pageY}px`;
+      });
+    });
 
-        const menu = item.classList.contains("library-item-playlist")
-          ? elements.menuPlaylist
-          : elements.menuArtist;
+    document.querySelectorAll(".library-item-artist").forEach((item) => {
+      item.addEventListener("click", async () => {
+        try {
+          const artistId = item.dataset.id;
+          const artist = await artistService.getById(artistId);
 
-        if (menu) {
-          menu.style.display = "block";
-          menu.style.left = `${e.pageX}px`;
-          menu.style.top = `${e.pageY}px`;
+          showUIPopular(true);
+
+          elements.artistHero.innerHTML = `
+            <div class="hero-background">
+              <img src="${artist.image_url || DEFAULT_IMAGE}" alt="${
+            artist.name
+          }" class="hero-image" />
+              <div class="hero-overlay"></div>
+            </div>
+            <div class="hero-content" data-id="${artist.id}" data-type="artist">
+              ${
+                artist.is_verified
+                  ? '<div class="verified-badge"><i class="fas fa-check-circle"></i><span>Verified Artist</span></div>'
+                  : ""
+              }
+              <h1 class="artist-name">${artist.name}</h1>
+              <p class="monthly-listeners">${formatNumber(
+                artist.monthly_listeners || 0
+              )} monthly listeners</p>
+              <button class="follow-btn artist-follow-btn" data-id="${
+                artist.id
+              }" data-following="${artist.is_following}">
+                ${artist.is_following ? "Following" : "Follow"}
+              </button>
+            </div>
+          `;
+
+          const tracks = await artistService.getPopularTracks(artist.id);
+          elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+
+          appState.setCurrentArtistId(artist.id);
+          appState.setCurrentTracks(tracks);
+
+          attachHeroEvents();
+        } catch (error) {
+          console.error("Load artist error:", error);
+          showToast("Failed to load artist", "error");
         }
+      });
+
+      item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        currentContextMenuId = item.dataset.id;
+        elements.menuArtist.style.display = "block";
+        elements.menuArtist.style.left = `${e.pageX}px`;
+        elements.menuArtist.style.top = `${e.pageY}px`;
       });
     });
   };
 
-  // Event Listeners Setup
+  const attachHeroEvents = () => {
+    const playlistFollowBtn = document.querySelector(".playlist-follow-btn");
+    if (playlistFollowBtn) {
+      playlistFollowBtn.addEventListener(
+        "click",
+        requireAuth(async () => {
+          try {
+            const playlistId = playlistFollowBtn.dataset.id;
+            const isFollowing = playlistFollowBtn.dataset.following === "true";
+
+            if (isFollowing) {
+              await playlistService.unfollow(playlistId);
+              playlistFollowBtn.textContent = "Follow";
+              playlistFollowBtn.dataset.following = "false";
+              showToast("Unfollowed playlist", "success");
+            } else {
+              await playlistService.follow(playlistId);
+              playlistFollowBtn.textContent = "Following";
+              playlistFollowBtn.dataset.following = "true";
+              showToast("Following playlist", "success");
+            }
+
+            await renderLibrary(
+              appState.getFilterType(),
+              null,
+              appState.getSortType()
+            );
+          } catch (error) {
+            console.error("Toggle follow error:", error);
+            showToast("Failed to update follow status", "error");
+          }
+        })
+      );
+    }
+
+    const artistFollowBtn = document.querySelector(".artist-follow-btn");
+    if (artistFollowBtn) {
+      artistFollowBtn.addEventListener(
+        "click",
+        requireAuth(async () => {
+          try {
+            const artistId = artistFollowBtn.dataset.id;
+            const isFollowing = artistFollowBtn.dataset.following === "true";
+
+            if (isFollowing) {
+              await artistService.unfollow(artistId);
+              artistFollowBtn.textContent = "Follow";
+              artistFollowBtn.dataset.following = "false";
+              showToast("Unfollowed artist", "success");
+            } else {
+              await artistService.follow(artistId);
+              artistFollowBtn.textContent = "Following";
+              artistFollowBtn.dataset.following = "true";
+              showToast("Following artist", "success");
+            }
+
+            await renderLibrary(
+              appState.getFilterType(),
+              null,
+              appState.getSortType()
+            );
+          } catch (error) {
+            console.error("Toggle follow error:", error);
+            showToast("Failed to update follow status", "error");
+          }
+        })
+      );
+    }
+  };
+
   const setupEventListeners = () => {
-    // Kiểm tra nếu đã setup rồi thì không setup lại
     if (eventListenersAdded) return;
 
-    // Auth modal events
-    elements.signupBtn.addEventListener("click", () => {
-      showSignupForm();
-      showAuthModal();
-    });
-    elements.loginBtn.addEventListener("click", () => {
-      showLoginForm();
-      showAuthModal();
-    });
-    elements.modalClose.addEventListener("click", hideAuthModal);
-    elements.showLoginBtn.addEventListener("click", showLoginForm);
-    elements.showSignupBtn.addEventListener("click", showSignupForm);
-
-    // Modal close events
-    elements.authModal.addEventListener("click", (e) => {
-      if (e.target === elements.authModal) hideAuthModal();
+    elements.closeMenuBtn?.addEventListener("click", () => {
+      elements.sidebar.classList.add("hide");
+      elements.sidebar.classList.remove("show");
     });
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        if (elements.authModal.classList.contains("show")) hideAuthModal();
-        if (elements.userDropdown.classList.contains("show"))
-          hideUserDropdown();
+    elements.menuBtn?.addEventListener("click", () => {
+      elements.sidebar.classList.toggle("hide");
+      elements.sidebar.classList.toggle("show");
+    });
+
+    [elements.logoIcon, elements.homeButton].forEach((el) => {
+      el?.addEventListener("click", async () => {
+        document.title = "Spotify";
+        showUIPopular(false);
+        await init();
+        elements.createPlaylistBtn.disabled = false;
+        elements.createPlaylistBtn.style.display = "block";
+        showUICreatePlaylist(false);
+      });
+    });
+
+    elements.navTabPlaylists?.addEventListener("click", async () => {
+      elements.navTabArtists.classList.remove("active");
+      elements.navTabPlaylists.classList.add("active");
+      appState.setFilterType("playlist");
+      await renderLibrary("playlist", null, appState.getSortType());
+    });
+
+    elements.navTabArtists?.addEventListener("click", async () => {
+      elements.navTabPlaylists.classList.remove("active");
+      elements.navTabArtists.classList.add("active");
+      appState.setFilterType("artist");
+      await renderLibrary("artist", null, appState.getSortType());
+    });
+
+    elements.searchLibraryBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      elements.searchLibraryInput.classList.toggle("show");
+      if (elements.searchLibraryInput.classList.contains("show")) {
+        elements.searchLibraryInput.focus();
       }
     });
 
-    // User dropdown events
-    elements.userAvatar.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleUserDropdown();
-    });
-
-    elements.logoutBtn.addEventListener("click", logout);
-
-    // Search and sort events
-    elements.searchLibraryBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleSearchInput();
-    });
-    let typingTimer; // save setTimeout
-    const delay = 800; // time delay
-
-    elements.searchInput.addEventListener("input", () => {
-      clearTimeout(typingTimer);
-      typingTimer = setTimeout(async () => {
-        const searchValue = elements.searchInput.value.toLowerCase().trim();
-
-        // Nếu search rỗng, hiển thị lại tất cả
-        if (!searchValue) {
-          await init(); // Reload lại toàn bộ
-          return;
-        }
-
-        // Lấy data từ API
-        const { playlists } = await getAllPlaylists();
-        const { artists } = await getAllArtists();
-
-        // Filter playlists
-        const filteredPlaylists = playlists.filter((playlist) =>
-          playlist.name.toLowerCase().includes(searchValue)
-        );
-
-        // Filter artists
-        const filteredArtists = artists.filter((artist) =>
-          artist.name.toLowerCase().includes(searchValue)
-        );
-
-        // Render filtered playlists
-        const hitsGridHtml = filteredPlaylists
-          .map(
-            (playlist) => `
-      <div data-id="${playlist.id}" class="hit-card">
-        <div class="hit-card-cover">
-          <img src="${
-            playlist.image_url !== null ? playlist.image_url : defaultSrcImg
-          }" alt="${playlist.description}" />
-          <button class="hit-play-btn">
-            <i class="fas fa-play"></i>
-          </button>
-        </div>
-        <div class="hit-card-info">
-          <h3 class="hit-card-title">${playlist.name}</h3>
-          <p class="hit-card-artist">${playlist.user_display_name}</p>
-        </div>
-      </div>
-    `
-          )
-          .join("");
-
-        // Render filtered artists
-        const artistsGridHtml = filteredArtists
-          .map(
-            (artist) => `
-      <div data-id="${artist.id}" class="artist-card">
-        <div class="artist-card-cover">
-          <img src="${
-            artist.image_url !== null ? artist.image_url : defaultSrcImg
-          }" alt="${artist.bio}" />
-          <button class="artist-play-btn">
-            <i class="fas fa-play"></i>
-          </button>
-        </div>
-        <div class="artist-card-info">
-          <h3 class="artist-card-name">${artist.name}</h3>
-          <p class="artist-card-type">${artist.bio}</p>
-        </div>
-      </div>
-    `
-          )
-          .join("");
-
-        // Update UI
-        elements.hitsGrid.innerHTML =
-          hitsGridHtml || '<p style="padding: 20px;">No playlists found</p>';
-        elements.artistsGrid.innerHTML =
-          artistsGridHtml || '<p style="padding: 20px;">No artists found</p>';
-
-        // Re-attach click events cho filtered items
-        attachCardClickEventsWithAuth();
-      }, delay);
-    });
-
-    elements.searchLibraryInput.addEventListener("input", () => {
-      clearTimeout(typingTimer); // reset if counting
-      typingTimer = setTimeout(async () => {
-        // Do action
-        await renderMyPlaylists(
-          elements.libraryContent,
-          localStorage.getItem("typeFilter"),
-          elements.searchLibraryInput.value
-        );
-        setupContextMenu();
-        attachLibraryItemEvents();
-      }, delay);
-    });
-
-    elements.sortBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleSortTable();
-    });
-
-    // Navigation tabs
-    elements.navTabPlaylists.addEventListener("click", async () => {
-      // Lấy sort type từ localStorage
-      const currentSort =
-        localStorage.getItem("currentSort") || "Recently Added";
-      elements.navTabArtists.classList.remove("active");
-      elements.navTabPlaylists.classList.add("active");
-      sortByPlaylist = true;
-      localStorage.setItem("typeFilter", "playlist");
-      localStorage.setItem("sortByPlaylist", true);
-      await renderMyPlaylists(
-        elements.libraryContent,
-        "playlist",
-        null,
-        currentSort
-      );
-      setupContextMenu();
-      attachLibraryItemEvents();
-    });
-
-    elements.navTabArtists.addEventListener("click", async () => {
-      // Lấy sort type từ localStorage
-      const currentSort =
-        localStorage.getItem("currentSort") || "Recently Added";
-      elements.navTabPlaylists.classList.remove("active");
-      elements.navTabArtists.classList.add("active");
-      sortByPlaylist = false;
-      localStorage.setItem("typeFilter", "artist");
-      localStorage.setItem("sortByPlaylist", false);
-      await renderMyPlaylists(
-        elements.libraryContent,
-        "artist",
-        null,
-        currentSort
-      );
-      setupContextMenu();
-      attachLibraryItemEvents();
-    });
-
-    // Context menu events
-    [elements.menuPlaylist, elements.menuArtist].forEach((menu) => {
-      menu.addEventListener("click", async (e) => {
-        const typeFilter = localStorage.getItem("typeFilter") || "all";
-        // Lấy sort type từ localStorage
-        const currentSort =
-          localStorage.getItem("currentSort") || "Recently Added";
-        if (e.target.closest(".context-menu-remove")) {
-          await unfollowPlaylist(currentPlaylistIdSideBar);
-          await renderMyPlaylists(
-            elements.libraryContent,
-            typeFilter,
-            null,
-            currentSort
-          );
-          await init();
-          hideMenus();
-          setupContextMenu();
-          attachLibraryItemEvents();
-          showUIPopular(false);
-          showUICreatePlaylist(false);
-          resetCreatePlaylistState();
-        } else if (e.target.closest(".context-menu-delete")) {
-          await deletePlaylist(currentPlaylistIdSideBar);
-          await renderMyPlaylists(
-            elements.libraryContent,
-            typeFilter,
-            null,
-            currentSort
-          );
-          await init();
-          hideMenus();
-          setupContextMenu();
-          attachLibraryItemEvents();
-          showUIPopular(false);
-          showUICreatePlaylist(false);
-          resetCreatePlaylistState();
-        } else if (e.target.closest(".context-menu-unfollow")) {
-          await unfollowArtist(currentPlaylistIdSideBar);
-          await renderMyPlaylists(
-            elements.libraryContent,
-            typeFilter,
-            null,
-            currentSort
-          );
-          await init();
-          hideMenus();
-          setupContextMenu();
-          attachLibraryItemEvents();
-          showUIPopular(false);
-          showUICreatePlaylist(false);
-          resetCreatePlaylistState();
-        }
-      });
-    });
-
-    // Sort options event
-    document.querySelectorAll(".sort-by-btn").forEach((option) => {
-      option.addEventListener("click", async () => {
-        const sortType = option.dataset.sort;
-        const typeFilter = localStorage.getItem("typeFilter") || "all";
-        const searchValue = elements.searchLibraryInput.value || null;
-
-        // Lưu sort type vào localStorage
-        localStorage.setItem("currentSort", sortType);
-
-        // Cập nhật text của sort button
-        const sortBtnText =
-          elements.sortBtn.querySelector(".sort-btn-text") ||
-          elements.sortBtn.firstChild;
-        if (sortBtnText) {
-          sortBtnText.textContent = option.textContent.trim();
-        }
-
-        // Re-render với sort mới
-        await renderMyPlaylists(
-          elements.libraryContent,
-          typeFilter,
+    elements.searchLibraryInput?.addEventListener(
+      "input",
+      debounce(async () => {
+        const searchValue = elements.searchLibraryInput.value;
+        await renderLibrary(
+          appState.getFilterType(),
           searchValue,
+          appState.getSortType()
+        );
+      }, 800)
+    );
+
+    elements.sortBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      elements.sortByTable.classList.toggle("show");
+    });
+
+    document.querySelectorAll(".sort-by-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const sortType = btn.dataset.sort;
+        appState.setSortType(sortType);
+        elements.sortByMode.textContent = sortType;
+        await renderLibrary(
+          appState.getFilterType(),
+          elements.searchLibraryInput.value,
           sortType
         );
-
-        setupContextMenu();
-        attachLibraryItemEvents();
-
-        // Đóng sort menu
         elements.sortByTable.classList.remove("show");
       });
     });
 
-    // View mode options event
-    document.querySelectorAll(".view-mode-btn").forEach((option) => {
-      option.addEventListener("click", () => {
-        const viewMode = option.dataset.view;
-        // Save view mode to localStorage
-
-        localStorage.setItem("viewMode", viewMode);
-        if (viewMode === "compact-list")
-          elements.sortBtn.innerHTML =
-            localStorage.getItem("currentSort") + '<i class="fas fa-list"></i>';
-        else if (viewMode === "default-list")
-          elements.sortBtn.innerHTML =
-            localStorage.getItem("currentSort") + '<i class="fas fa-list"></i>';
-        else if (viewMode === "compact-grid")
-          elements.sortBtn.innerHTML =
-            localStorage.getItem("currentSort") + '<i class="fas fa-th"></i>';
-        else if (viewMode === "default-grid")
-          elements.sortBtn.innerHTML =
-            localStorage.getItem("currentSort") +
-            '<i class="fas fa-th-large"></i>';
-        // Remove all view mode classes first
-        const removeClasses = (selector, className) => {
-          document
-            .querySelectorAll(selector)
-            .forEach((el) =>
-              el.classList.remove(
-                "view-default-list",
-                "view-compact-grid",
-                "view-default-grid"
-              )
-            );
-        };
-
-        removeClasses(".item-image");
-        removeClasses(".item-info");
-        removeClasses(".library-content");
-        removeClasses(".library-item");
-
-        // Add new view mode class
-        if (viewMode !== "default") {
-          document
-            .querySelectorAll(".item-image, .item-info")
-            .forEach((el) => el.classList.add(`view-${viewMode}`));
-          document
-            .querySelector(".library-content")
-            ?.classList.add(`view-${viewMode}`);
-          document
-            .querySelectorAll(".library-item")
-            .forEach((el) => el.classList.add(`view-${viewMode}`));
+    elements.menuPlaylist?.addEventListener("click", async (e) => {
+      if (e.target.closest(".context-menu-remove")) {
+        try {
+          await playlistService.unfollow(currentContextMenuId);
+          await renderLibrary(
+            appState.getFilterType(),
+            null,
+            appState.getSortType()
+          );
+          showUIPopular(false);
+          await init();
+          elements.createPlaylistBtn.disabled = false;
+          elements.createPlaylistBtn.style.display = "block";
+          showToast("Playlist removed from library", "success");
+        } catch (error) {
+          console.error("Unfollow error:", error);
+          showToast("Failed to remove playlist", "error");
         }
-
-        // Close sort menu
-        elements.sortByTable.classList.remove("show");
-      });
+      } else if (e.target.closest(".context-menu-delete")) {
+        try {
+          await playlistService.delete(currentContextMenuId);
+          await renderLibrary(
+            appState.getFilterType(),
+            null,
+            appState.getSortType()
+          );
+          showUIPopular(false);
+          await init();
+          elements.createPlaylistBtn.disabled = false;
+          elements.createPlaylistBtn.style.display = "block";
+          showToast("Playlist deleted", "success");
+        } catch (error) {
+          console.error("Delete error:", error);
+          showToast("Failed to delete playlist", "error");
+        }
+      }
+      elements.menuPlaylist.style.display = "none";
     });
 
-    // Home navigation
-    [elements.logoIcon, elements.homeButton].forEach((el) => {
-      el.addEventListener("click", async () => {
-        document.title = "Sportify";
-        await init();
-        showUIPopular(false);
-        showUICreatePlaylist(false);
-        resetCreatePlaylistState();
-      });
+    elements.menuArtist?.addEventListener("click", async (e) => {
+      if (e.target.closest(".context-menu-unfollow")) {
+        try {
+          await artistService.unfollow(currentContextMenuId);
+          await renderLibrary(
+            appState.getFilterType(),
+            null,
+            appState.getSortType()
+          );
+          showUIPopular(false);
+          await init();
+          elements.createPlaylistBtn.disabled = false;
+          elements.createPlaylistBtn.style.display = "block";
+          showToast("Artist unfollowed", "success");
+        } catch (error) {
+          console.error("Unfollow error:", error);
+          showToast("Failed to unfollow artist", "error");
+        }
+      }
+      elements.menuArtist.style.display = "none";
     });
 
-    // Create playlist
-    elements.createPlaylistBtn.addEventListener(
-      "click",
-      requireAuth(async (e) => {
-        e.preventDefault();
+    document.addEventListener("click", () => {
+      elements.menuPlaylist.style.display = "none";
+      elements.menuArtist.style.display = "none";
+      elements.sortByTable?.classList.remove("show");
+    });
+
+    // ✅ View Mode buttons
+    elements.viewModeButtons?.forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
         e.stopPropagation();
+        const viewMode = btn.dataset.view;
 
-        // Kiểm tra nếu đang trong quá trình tạo playlist
-        if (isCreatingPlaylist) {
-          console.log("Already creating playlist, please wait...");
+        if (!viewMode) return;
+
+        currentViewMode = viewMode;
+        appState.set("viewMode", viewMode);
+
+        // Cập nhật active state
+        elements.viewModeButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        elements.sortByTable.classList.remove("show");
+        if (viewMode === "compact-list")
+          elements.viewAsIcon.className = "fas fa-list";
+        else if (viewMode === "default-list")
+          elements.viewAsIcon.className = "fas fa-bars";
+        else if (viewMode === "compact-grid")
+          elements.viewAsIcon.className = "fas fa-th";
+        else if (viewMode === "default-grid")
+          elements.viewAsIcon.className = "fas fa-th-large";
+        // Re-render với view mode mới
+        await renderLibrary(
+          appState.getFilterType(),
+          elements.searchLibraryInput?.value || null,
+          appState.getSortType()
+        );
+      });
+    });
+
+    elements.searchInput?.addEventListener(
+      "input",
+      debounce(async () => {
+        const searchValue = elements.searchInput.value.toLowerCase().trim();
+
+        if (!searchValue) {
+          await init();
           return;
         }
 
         try {
-          // Set flag và disable button ngay lập tức
+          const [
+            {
+              data: { playlists },
+            },
+            {
+              data: { artists },
+            },
+          ] = await Promise.all([playlistAPI.getAll(), artistAPI.getAll()]);
+
+          const filteredPlaylists = playlists.filter((p) =>
+            p.name.toLowerCase().includes(searchValue)
+          );
+          const filteredArtists = artists.filter((a) =>
+            a.name.toLowerCase().includes(searchValue)
+          );
+
+          elements.hitsGrid.innerHTML = filteredPlaylists
+            .map(
+              (p) => `
+          <div title="${p.name}" data-id="${p.id}" class="hit-card">
+            <div class="hit-card-cover">
+              <img src="${p.image_url || DEFAULT_IMAGE}" alt="${p.name}" />
+              <button class="hit-play-btn"><i class="fas fa-play"></i></button>
+            </div>
+            <div class="hit-card-info">
+              <h3 class="hit-card-title">${p.name}</h3>
+              <p class="hit-card-artist">${p.user_display_name}</p>
+            </div>
+          </div>
+        `
+            )
+            .join("");
+
+          elements.artistsGrid.innerHTML = filteredArtists
+            .map(
+              (a) => `
+          <div title="${a.name}" data-id="${a.id}" class="artist-card">
+            <div class="artist-card-cover">
+              <img src="${a.image_url || DEFAULT_IMAGE}" alt="${a.name}" />
+              <button class="artist-play-btn"><i class="fas fa-play"></i></button>
+            </div>
+            <div class="artist-card-info">
+              <h3 class="artist-card-name">${a.name}</h3>
+              <p class="artist-card-type">${a.bio || "Artist"}</p>
+            </div>
+          </div>
+        `
+            )
+            .join("");
+
+          attachCardEvents();
+        } catch (error) {
+          console.error("Search error:", error);
+        }
+      }, 800)
+    );
+
+    elements.createPlaylistBtn?.addEventListener(
+      "click",
+      requireAuth(async (e) => {
+        if (isCreatingPlaylist) return;
+
+        try {
           isCreatingPlaylist = true;
           elements.createPlaylistBtn.disabled = true;
-          document.title = "Create new playlist";
 
           showUICreatePlaylist(true);
-          const { playlist } = await createPlaylist();
-          const currentSort =
-            localStorage.getItem("currentSort") || "Recently Added";
+          const playlist = await playlistService.create();
+
           elements.createPlaylistBtn.style.display = "none";
           elements.playlistName.value = playlist.name;
           elements.playlistDesc.value = playlist.description;
@@ -942,989 +706,609 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.playlistCoverImage.src = playlist.image_url;
           elements.playlistTitle.textContent = playlist.name;
           elements.playlistTitle.dataset.id = playlist.id;
-          const typeFilter = localStorage.getItem("typeFilter") || "all";
-          await renderMyPlaylists(
-            elements.libraryContent,
-            typeFilter,
+
+          // ✅ Lưu image_url hiện tại vào dataset để dùng khi save
+          elements.playlistTitle.dataset.imageUrl = playlist.image_url;
+
+          await renderLibrary(
+            appState.getFilterType(),
             null,
-            currentSort
+            appState.getSortType()
           );
-          setupContextMenu();
-          attachLibraryItemEvents();
+          showToast("Playlist created successfully", "success");
         } catch (error) {
           console.error("Error creating playlist:", error);
-          // Reset UI nếu có lỗi
           elements.createPlaylistBtn.disabled = false;
-          elements.createPlaylistBtn.textContent = "Create Playlist";
           elements.createPlaylistBtn.style.display = "block";
           showUICreatePlaylist(false);
+          showToast("Failed to create playlist", "error");
         } finally {
-          // Reset flag sau khi hoàn thành
           isCreatingPlaylist = false;
         }
       })
     );
 
-    // Playlist modal events
-    elements.playlistTitle.addEventListener("click", openPlaylistModal);
-    elements.playlistImage.addEventListener("click", openPlaylistModal);
-    elements.overlay.addEventListener("click", closePlaylistModal);
-    elements.modalCloseBtn.addEventListener("click", closePlaylistModal);
-
-    // File upload
-    elements.coverPreviewImage.addEventListener("click", () =>
-      elements.fileInputPlaylistCover.click()
-    );
-
-    elements.fileInputPlaylistCover.addEventListener("change", async () => {
-      const file = elements.fileInputPlaylistCover.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          elements.coverPreviewImage.src = e.target.result;
-          elements.playlistCoverImage.src = e.target.result;
-          elements.coverPreviewImage.style.display = "block";
-        };
-        reader.readAsDataURL(file);
-
-        const formData = new FormData();
-        formData.append("cover", file);
-
-        try {
-          const response = await uploadPlaylistCover(
-            elements.playlistTitle.dataset.id,
-            formData
-          );
-          urlPlaylistCoverImage = response.file.url;
-        } catch (error) {
-          console.error("Upload error:", error);
-        }
-      }
+    // ✅ Click vào cả image thumbnail và title đều mở modal
+    elements.playlistTitle?.addEventListener("click", () => {
+      elements.overlay.classList.remove("hidden");
+      elements.modal.classList.remove("hidden");
     });
 
-    // Save playlist changes
-    elements.saveBtn.addEventListener("click", async () => {
-      const playlistUpdateData = {
-        name: elements.playlistName.value,
-        description: elements.playlistDesc.value,
-        image_url: urlPlaylistCoverImage,
+    elements.playlistCoverImage?.addEventListener("click", () => {
+      elements.overlay.classList.remove("hidden");
+      elements.modal.classList.remove("hidden");
+    });
+
+    elements.overlay?.addEventListener("click", () => {
+      elements.overlay.classList.add("hidden");
+      elements.modal.classList.add("hidden");
+    });
+
+    elements.modalCloseBtn?.addEventListener("click", () => {
+      elements.overlay.classList.add("hidden");
+      elements.modal.classList.add("hidden");
+    });
+
+    elements.coverPreviewImage?.addEventListener("click", () => {
+      elements.fileInputPlaylistCover.click();
+    });
+
+    elements.fileInputPlaylistCover?.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // ✅ Preview ảnh ngay lập tức
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        elements.coverPreviewImage.src = e.target.result;
+        elements.playlistCoverImage.src = e.target.result;
       };
+      reader.readAsDataURL(file);
 
       try {
-        const currentSort =
-          localStorage.getItem("currentSort") || "Recently Added";
-        await updatePlaylist(
+        const url = await playlistService.uploadCover(
           elements.playlistTitle.dataset.id,
-          playlistUpdateData
+          file
         );
-        const playlist = await getPlaylistById(
-          elements.playlistTitle.dataset.id
-        );
-        elements.playlistName.value = playlist.name;
-        elements.playlistDesc.value = playlist.description;
-        elements.playlistCoverImage.src = playlist.image_url;
-        elements.playlistTitle.textContent = playlist.name;
-        elements.playlistTitle.dataset.id = playlist.id;
-        const typeFilter = localStorage.getItem("typeFilter") || "all";
-        await renderMyPlaylists(
-          elements.libraryContent,
-          typeFilter,
-          null,
-          currentSort
-        );
-        setupContextMenu();
-        attachLibraryItemEvents();
+        // ✅ Lưu URL mới vào dataset để dùng khi save
+        elements.playlistTitle.dataset.imageUrl = url;
+        showToast("Cover uploaded successfully", "success");
       } catch (error) {
-        console.error(error);
+        console.error("Upload error:", error);
+        showToast("Failed to upload cover", "error");
       } finally {
-        closePlaylistModal();
+        // ✅ Reset input để có thể chọn lại cùng file
+        e.target.value = "";
       }
     });
 
-    // Form submissions
-    elements.signupForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        email: document.querySelector("#signupEmail").value,
-        password: document.querySelector("#signupPassword").value,
-        username: document.querySelector("#username").value,
-        display_name: document.querySelector("#displayName").value,
+    elements.saveBtn?.addEventListener("click", async () => {
+      const playlistId = elements.playlistTitle.dataset.id;
+      const imageUrl = elements.playlistTitle.dataset.imageUrl; // ✅ Lấy URL đã upload
+
+      const data = {
+        name: elements.playlistName.value,
+        description: elements.playlistDesc.value,
       };
-      await handleAuth(true, formData);
+
+      // ✅ Chỉ gửi image_url nếu đã thay đổi
+      if (imageUrl) {
+        data.image_url = imageUrl;
+      }
+
+      try {
+        await playlistService.update(playlistId, data);
+        elements.playlistTitle.textContent = data.name;
+        elements.overlay.classList.add("hidden");
+        elements.modal.classList.add("hidden");
+        await renderLibrary(
+          appState.getFilterType(),
+          null,
+          appState.getSortType()
+        );
+        showToast("Playlist updated successfully", "success");
+      } catch (error) {
+        console.error("Save error:", error);
+        showToast("Failed to update playlist", "error");
+      }
     });
 
-    elements.loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        email: document.querySelector("#loginEmail").value,
-        password: document.querySelector("#loginPassword").value,
-      };
-      await handleAuth(false, formData);
-    });
-
-    // Global click handlers
-    document.addEventListener("click", (e) => {
-      if (
-        !elements.searchLibraryInput.contains(e.target) &&
-        !elements.searchLibraryBtn.contains(e.target)
-      ) {
-        elements.searchLibraryInput.classList.remove("show");
-      }
-      if (
-        !elements.sortByTable.contains(e.target) &&
-        !elements.sortBtn.contains(e.target)
-      ) {
-        elements.sortByTable.classList.remove("show");
-      }
-      if (
-        !elements.userAvatar.contains(e.target) &&
-        !elements.userDropdown.contains(e.target)
-      ) {
-        hideUserDropdown();
-      }
-      hideMenus();
-    });
-
-    // Handle individual track clicks
     document.addEventListener("click", async (e) => {
-      // Xử lý like button trước
       const likeBtn = e.target.closest(".track-is-liked");
       if (likeBtn) {
-        e.stopPropagation(); // Ngăn click bubble lên track-item
+        e.stopPropagation();
 
         const trackItem = likeBtn.closest(".track-item");
         const trackId = trackItem.dataset.id;
         const isLiked = likeBtn.textContent.trim() === "💚";
 
         try {
-          if (isLiked) {
-            await unlikeTrack(trackId);
-          } else {
-            await likeTrack(trackId);
-          }
+          await trackService.toggleLike(trackId, isLiked);
 
-          // Cập nhật localStorage
-          const currentTracks = JSON.parse(
-            localStorage.getItem("currentTracks") || "[]"
-          );
-
-          // Sửa đây: So sánh với cả id và track_id, convert về string để so sánh chính xác
+          const currentTracks = appState.getCurrentTracks();
           const trackIndex = currentTracks.findIndex(
             (t) => String(t.track_id || t.id) === String(trackId)
           );
 
           if (trackIndex !== -1) {
             currentTracks[trackIndex].is_liked = !isLiked;
-            localStorage.setItem(
-              "currentTracks",
-              JSON.stringify(currentTracks)
-            );
+            appState.setCurrentTracks(currentTracks);
 
-            // Render lại tracks
-            const currentArtistId = localStorage.getItem("currentArtistId");
             elements.popularSection.innerHTML = renderTracks(
               currentTracks,
-              currentArtistId
+              appState.getCurrentArtistId()
+            );
+
+            showToast(
+              isLiked ? "Removed from Liked Songs" : "Added to Liked Songs",
+              "success"
             );
           }
         } catch (error) {
           console.error("Error toggling like:", error);
+          showToast("Failed to update like status", "error");
         }
-        return; // Dừng xử lý
+        return;
       }
 
-      // Xử lý click vào track item (play nhạc)
       const trackItem = e.target.closest(".track-item");
       if (trackItem) {
-        try {
-          const index = Number(trackItem.dataset.indexSong);
-          const artistId = trackItem.dataset.artistId;
+        const index = Number(trackItem.dataset.indexSong);
+        const artistId = trackItem.dataset.artistId || null;
+        const currentTracks = appState.getCurrentTracks();
 
-          const currentTracks = JSON.parse(
-            localStorage.getItem("currentTracks") || "[]"
-          );
+        if (currentTracks.length === 0) return;
 
-          if (currentTracks.length === 0) {
-            console.warn("No tracks found in localStorage");
-            return;
-          }
+        await player.loadNewPlaylist(currentTracks, artistId);
 
-          player.currentIndex = index;
-          player.addToHistory(player.currentIndex);
-          localStorage.setItem("currentIndex", player.currentIndex);
+        player.currentIndex = index;
+        appState.setCurrentIndex(index);
 
-          player.loadCurrentSong();
-
-          setTimeout(async () => {
-            await player.safePlay();
-          }, 200);
-
-          if (elements.popularSection && currentTracks.length > 0) {
-            elements.popularSection.innerHTML = renderTracks(
-              currentTracks,
-              artistId
-            );
-          }
-        } catch (error) {
-          console.error("Error playing track:", error);
+        if (artistId) {
+          appState.setCurrentArtistId(artistId);
         }
+
+        player.loadCurrentSong();
+        setTimeout(() => player.safePlay(), 200);
+
+        elements.popularSection.innerHTML = renderTracks(
+          currentTracks,
+          artistId
+        );
       }
     });
 
-    // Mark event listeners as added
+    elements.playBtnLarge?.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const currentTracks = appState.getCurrentTracks();
+      if (currentTracks.length === 0) return;
+
+      if (player.songs.length === 0 || player.audio.src === "") {
+        await player.loadNewPlaylist(
+          currentTracks,
+          appState.getCurrentArtistId()
+        );
+        player.currentIndex = 0;
+        appState.setCurrentIndex(0);
+        player.loadCurrentSong();
+        setTimeout(() => player.safePlay(), 200);
+
+        elements.popularSection.innerHTML = renderTracks(
+          currentTracks,
+          appState.getCurrentArtistId()
+        );
+      } else {
+        player.audio.paused ? await player.safePlay() : player.safePause();
+      }
+    });
+
     eventListenersAdded = true;
   };
 
-  // Attach click events cho playlist và artist cards với auth check
-  const attachCardClickEventsWithAuth = () => {
-    // Hit cards
+  const attachCardEvents = () => {
     document.querySelectorAll(".hit-card").forEach((card) => {
       card.addEventListener(
         "click",
         requireAuth(async () => {
-          const playlist = await getPlaylistById(card.dataset.id);
-          showUIPopular(true);
-          elements.artistHero.innerHTML = renderPlaylistHero(playlist);
+          try {
+            const playlistId = card.dataset.id;
+            const playlist = await playlistService.getById(playlistId);
 
-          const followBtn = elements.artistHero.querySelector(
-            ".playlist-follow-btn"
-          );
-          if (followBtn) {
-            followBtn.addEventListener("click", async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const isFollowing = e.target.dataset.following === "true";
-              await handleFollowToggle(
-                "playlist",
-                playlist.id,
-                isFollowing,
-                e.target
-              );
-            });
-          }
+            showUIPopular(true);
 
-          const { tracks } = await getTrackByPlaylist(playlist.id);
-          elements.popularSection.innerHTML = renderTracks(tracks);
-          localStorage.setItem("currentTracks", JSON.stringify(tracks));
-          localStorage.setItem("currentPlaylistId", playlist.id);
-          document.title = playlist.name + " - " + playlist.user_display_name;
-          if (window.player && tracks.length > 0) {
-            await window.player.loadNewPlaylist(tracks, playlist.id);
+            elements.artistHero.innerHTML = `
+            <div class="hero-background">
+              <img src="${playlist.image_url || DEFAULT_IMAGE}" alt="${
+              playlist.name
+            }" class="hero-image" />
+              <div class="hero-overlay"></div>
+            </div>
+            <div class="hero-content" data-id="${
+              playlist.id
+            }" data-type="playlist">
+              <div class="verified-badge"><span>Public playlist</span></div>
+              <h1 class="artist-name">${playlist.name}</h1>
+              <p class="monthly-listeners">${
+                playlist.description || playlist.user_display_name
+              }</p>
+              ${
+                !playlist.is_owner
+                  ? `
+                <button class="follow-btn playlist-follow-btn" data-id="${
+                  playlist.id
+                }" data-following="${playlist.is_following}">
+                  ${playlist.is_following ? "Following" : "Follow"}
+                </button>
+              `
+                  : '<button type="button" class="owner-btn">Owner</button>'
+              }
+            </div>
+          `;
+
+            const tracks = await playlistService.getTracks(playlist.id);
+            elements.popularSection.innerHTML = renderTracks(tracks, null);
+
+            appState.setCurrentTracks(tracks);
+            appState.setCurrentArtistId(null);
+
+            attachHeroEvents();
+          } catch (error) {
+            console.error("Load playlist error:", error);
+            showToast("Failed to load playlist", "error");
           }
         })
       );
     });
 
-    // Artist cards
     document.querySelectorAll(".artist-card").forEach((card) => {
       card.addEventListener(
         "click",
         requireAuth(async () => {
-          const artist = await getArtistById(card.dataset.id);
-          showUIPopular(true);
-          elements.artistHero.innerHTML = renderArtistHero(artist);
+          try {
+            const artistId = card.dataset.id;
+            const artist = await artistService.getById(artistId);
 
-          const followBtn =
-            elements.artistHero.querySelector(".artist-follow-btn");
-          if (followBtn) {
-            followBtn.addEventListener("click", async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const isFollowing = e.target.dataset.following === "true";
-              await handleFollowToggle(
-                "artist",
-                artist.id,
-                isFollowing,
-                e.target
-              );
-            });
-          }
+            showUIPopular(true);
 
-          const { tracks } = await getArtistPopularTracks(artist.id);
-          elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
-          localStorage.setItem("currentArtistId", artist.id);
-          localStorage.setItem("currentTracks", JSON.stringify(tracks));
-          document.title = artist.name + " - " + artist.bio;
+            elements.artistHero.innerHTML = `
+            <div class="hero-background">
+              <img src="${artist.image_url || DEFAULT_IMAGE}" alt="${
+              artist.name
+            }" class="hero-image" />
+              <div class="hero-overlay"></div>
+            </div>
+            <div class="hero-content" data-id="${artist.id}" data-type="artist">
+              ${
+                artist.is_verified
+                  ? '<div class="verified-badge"><i class="fas fa-check-circle"></i><span>Verified Artist</span></div>'
+                  : ""
+              }
+              <h1 class="artist-name">${artist.name}</h1>
+              <p class="monthly-listeners">${formatNumber(
+                artist.monthly_listeners || 0
+              )} monthly listeners</p>
+              <button class="follow-btn artist-follow-btn" data-id="${
+                artist.id
+              }" data-following="${artist.is_following}">
+                ${artist.is_following ? "Following" : "Follow"}
+              </button>
+            </div>
+          `;
 
-          if (window.player && tracks.length > 0) {
-            await window.player.loadNewPlaylist(tracks, artist.id);
+            const tracks = await artistService.getPopularTracks(artist.id);
+            elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
+
+            appState.setCurrentArtistId(artist.id);
+            appState.setCurrentTracks(tracks);
+
+            attachHeroEvents();
+          } catch (error) {
+            console.error("Load artist error:", error);
+            showToast("Failed to load artist", "error");
           }
         })
       );
     });
   };
 
-  // Attach events cho library items (sidebar)
-  const attachLibraryItemEvents = () => {
-    // Library item playlist
-    document.querySelectorAll(".library-item-playlist").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const playlist = await getPlaylistById(card.dataset.id);
-        showUIPopular(true);
-
-        elements.artistHero.innerHTML = renderPlaylistHero(playlist);
-
-        const followBtn = elements.artistHero.querySelector(
-          ".playlist-follow-btn"
-        );
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "playlist",
-              playlist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        const { tracks } = await getTrackByPlaylist(playlist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks);
-
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-        localStorage.setItem("currentPlaylistId", playlist.id);
-        document.title = playlist.name + " - " + playlist.user_display_name;
-
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, null);
-        }
-      });
-    });
-
-    // Library item artist
-    document.querySelectorAll(".library-item-artist").forEach((card) => {
-      card.addEventListener("click", async () => {
-        const artist = await getArtistById(card.dataset.id);
-        showUIPopular(true);
-
-        elements.artistHero.innerHTML = renderArtistHero(artist);
-
-        const followBtn =
-          elements.artistHero.querySelector(".artist-follow-btn");
-        if (followBtn) {
-          followBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isFollowing = e.target.dataset.following === "true";
-            await handleFollowToggle(
-              "artist",
-              artist.id,
-              isFollowing,
-              e.target
-            );
-          });
-        }
-
-        const { tracks } = await getArtistPopularTracks(artist.id);
-        elements.popularSection.innerHTML = renderTracks(tracks, artist.id);
-
-        localStorage.setItem("currentArtistId", artist.id);
-        localStorage.setItem("currentTracks", JSON.stringify(tracks));
-        document.title = artist.name + " - " + artist.bio;
-
-        if (window.player && tracks.length > 0) {
-          await window.player.loadNewPlaylist(tracks, artist.id);
-        }
-      });
-    });
-  };
-
-  // Initialize application
   const init = async () => {
-    const isAuthentication = localStorage.getItem("isAuthentication");
-    elements.userAvatar.style.display = "none";
-    // Load and render main content (available for everyone)
-    const { playlists } = await getAllPlaylists();
-    const { artists } = await getAllArtists();
+    try {
+      const [
+        {
+          data: { playlists },
+        },
+        {
+          data: { artists },
+        },
+      ] = await Promise.all([playlistAPI.getAll(), artistAPI.getAll()]);
 
-    // Render playlists grid
-    const hitsGridHtml = playlists
-      .map(
-        (playlist) => `
-      <div title="${playlist.name}" data-id="${playlist.id}" class="hit-card">
-        <div class="hit-card-cover">
-          <img src="${
-            playlist.image_url !== null ? playlist.image_url : defaultSrcImg
-          }" alt="${playlist.description}" />
-          <button class="hit-play-btn">
-            <i class="fas fa-play"></i>
-          </button>
+      elements.hitsGrid.innerHTML = playlists
+        .map(
+          (p) => `
+        <div title="${p.name}" data-id="${p.id}" class="hit-card">
+          <div class="hit-card-cover">
+            <img src="${p.image_url || DEFAULT_IMAGE}" alt="${p.name}" />
+            <button class="hit-play-btn"><i class="fas fa-play"></i></button>
+          </div>
+          <div class="hit-card-info">
+            <h3 class="hit-card-title">${p.name}</h3>
+            <p class="hit-card-artist">${p.user_display_name}</p>
+          </div>
         </div>
-        <div class="hit-card-info">
-          <h3 class="hit-card-title">${playlist.name}</h3>
-          <p class="hit-card-artist">${playlist.user_display_name}</p>
+      `
+        )
+        .join("");
+
+      elements.artistsGrid.innerHTML = artists
+        .map(
+          (a) => `
+        <div title="${a.name}" data-id="${a.id}" class="artist-card">
+          <div class="artist-card-cover">
+            <img src="${a.image_url || DEFAULT_IMAGE}" alt="${a.name}" />
+            <button class="artist-play-btn"><i class="fas fa-play"></i></button>
+          </div>
+          <div class="artist-card-info">
+            <h3 class="artist-card-name">${a.name}</h3>
+            <p class="artist-card-type">${a.bio || "Artist"}</p>
+          </div>
         </div>
-      </div>
-    `
-      )
-      .join("");
-    elements.hitsGrid.innerHTML = hitsGridHtml;
+      `
+        )
+        .join("");
 
-    // Render artists grid
-    const artistsGridHtml = artists
-      .map(
-        (artist) => `
-      <div title="${artist.name}" data-id="${artist.id}" class="artist-card">
-        <div class="artist-card-cover">
-          <img src="${
-            artist.image_url !== null ? artist.image_url : defaultSrcImg
-          }" alt="${artist.bio}" />
-          <button class="artist-play-btn">
-            <i class="fas fa-play"></i>
-          </button>
-        </div>
-        <div class="artist-card-info">
-          <h3 class="artist-card-name">${artist.name}</h3>
-          <p class="artist-card-type">${artist.bio}</p>
-        </div>
-      </div>
-    `
-      )
-      .join("");
-    elements.artistsGrid.innerHTML = artistsGridHtml;
+      attachCardEvents();
 
-    // Attach click events với auth check
-    attachCardClickEventsWithAuth();
+      if (appState.isAuthenticated()) {
+        const filterType = appState.getFilterType();
+        const sortType = appState.getSortType();
 
-    if (isAuthentication === "true") {
-      // Get filter type
-      const typeFilter = localStorage.getItem("typeFilter") || "all";
-      const currentSort = localStorage.getItem("currentSort") || "recents";
+        if (filterType === "playlist") {
+          elements.navTabPlaylists.classList.add("active");
+          elements.navTabArtists.classList.remove("active");
+        } else if (filterType === "artist") {
+          elements.navTabArtists.classList.add("active");
+          elements.navTabPlaylists.classList.remove("active");
+        }
 
-      // Cập nhật text của sort button theo currentSort
-      const sortBtnText = elements.sortBtn.querySelector(".sort-btn-text");
-      if (sortBtnText) {
-        sortBtnText.textContent =
-          currentSort === "alphabetical" ? "Alphabetical" : "Recents";
+        // ✅ Set active view mode
+        const savedViewMode = appState.get("viewMode", "default-list");
+        currentViewMode = savedViewMode;
+        elements.viewModeButtons.forEach((btn) => {
+          if (btn.dataset.view === savedViewMode) {
+            btn.classList.add("active");
+          }
+        });
+
+        await renderLibrary(filterType, null, sortType);
       }
 
-      // Update UI tabs based on sort state
-      if (typeFilter === "playlist") {
-        elements.navTabPlaylists.classList.add("active");
-        elements.navTabArtists.classList.remove("active");
-      } else if (typeFilter === "artist") {
-        elements.navTabPlaylists.classList.remove("active");
-        elements.navTabArtists.classList.add("active");
-      } else {
-        elements.navTabPlaylists.classList.remove("active");
-        elements.navTabArtists.classList.remove("active");
-      }
-
-      // Load user and render playlists
-      await onLoadUser();
-      await renderMyPlaylists(
-        elements.libraryContent,
-        typeFilter,
-        null,
-        currentSort
-      );
-      setupContextMenu();
-      attachLibraryItemEvents();
+      setupEventListeners();
+    } catch (error) {
+      console.error("Init error:", error);
+      showToast("Failed to initialize app", "error");
     }
-
-    // Setup event listeners chỉ một lần
-    setupEventListeners();
   };
 
-  // Audio player với xử lý conflict được cải thiện
-  const player = {
-    NEXT: 1,
-    PREV: -1,
-    timeToPrev: 2,
+  function initializePlayer() {
+    const player = {
+      audio: document.querySelector(".player-audio"),
+      playerImage: document.querySelector(".player-image"),
+      playerTitle: document.querySelector(".player-title"),
+      playerArtist: document.querySelector(".player-artist"),
+      playBtn: document.querySelector(".play-btn"),
+      nextBtn: document.querySelector(".control-btn:has(.fa-step-forward)"),
+      prevBtn: document.querySelector(".control-btn:has(.fa-step-backward)"),
+      shuffleBtn: document.querySelector(".control-btn:has(.fa-random)"),
+      repeatBtn: document.querySelector(".control-btn:has(.fa-redo)"),
+      progressBar: document.querySelector(".progress-bar"),
+      progressFill: document.querySelector(".progress-fill"),
+      currentTimeEl: document.querySelector(
+        ".progress-container .time:first-child"
+      ),
+      totalTimeEl: document.querySelector(
+        ".progress-container .time:last-child"
+      ),
+      volumeBar: document.querySelector(".volume-bar"),
+      volumeFill: document.querySelector(".volume-fill"),
 
-    // DOM Elements
-    audio: document.querySelector(".player-audio"),
-    playerImage: document.querySelector(".player-image"),
-    playerTitle: document.querySelector(".player-title"),
-    playerArtist: document.querySelector(".player-artist"),
+      songs: [],
+      currentIndex: 0,
+      isRepeat: false,
+      isShuffle: false,
+      isTransitioning: false,
 
-    // Control buttons
-    shuffleBtn: document.querySelector(".control-btn:has(.fa-random)"),
-    prevBtn: document.querySelector(".control-btn:has(.fa-step-backward)"),
-    playBtn: document.querySelector(".play-btn"),
-    nextBtn: document.querySelector(".control-btn:has(.fa-step-forward)"),
-    repeatBtn: document.querySelector(".control-btn:has(.fa-redo)"),
-
-    // Progress elements
-    currentTimeEl: document.querySelector(
-      ".progress-container .time:first-child"
-    ),
-    totalTimeEl: document.querySelector(".progress-container .time:last-child"),
-    progressBar: document.querySelector(".progress-bar"),
-    progressFill: document.querySelector(".progress-fill"),
-    progressHandle: document.querySelector(".progress-handle"),
-
-    // Volume elements
-    volumeBtn: document.querySelector(".control-btn:has(.fa-volume-down)"),
-    volumeBar: document.querySelector(".volume-bar"),
-    volumeFill: document.querySelector(".volume-fill"),
-    volumeHandle: document.querySelector(".volume-handle"),
-
-    // Player state
-    songs: [],
-    historySong: [],
-    currentIndex: Number(localStorage.getItem("currentIndex")) || 0,
-    isScrolling: false,
-    isRepeat: localStorage.getItem("isRepeat") === "true",
-    isShuffle: localStorage.getItem("isShuffle") === "true",
-    isLoading: false,
-    isTransitioning: false,
-
-    // Utility để xử lý audio play/pause safely
-    async safePlay() {
-      if (this.isTransitioning) return;
-
-      try {
-        this.isTransitioning = true;
-
-        // Pause trước khi play để tránh conflict
-        this.audio.pause();
-
-        // Đợi một chút để đảm bảo pause hoàn thành
-        await new Promise((resolve) => setTimeout(resolve, 10));
-
-        // Kiểm tra nếu có src valid
-        if (this.audio.src && this.audio.readyState >= 2) {
-          await this.audio.play();
-        }
-      } catch (error) {
-        console.warn("Play was interrupted:", error.name);
-        // Retry sau một khoảng thời gian ngắn
-        if (error.name === "AbortError") {
-          setTimeout(() => {
-            if (!this.audio.paused) return;
-            this.audio
-              .play()
-              .catch((e) => console.warn("Retry play failed:", e));
-          }, 100);
-        }
-      } finally {
-        this.isTransitioning = false;
-      }
-    },
-
-    safePause() {
-      if (this.isTransitioning) return;
-
-      try {
-        this.isTransitioning = true;
-        this.audio.pause();
-      } finally {
-        setTimeout(() => {
+      async safePlay() {
+        if (this.isTransitioning) return;
+        try {
+          this.isTransitioning = true;
+          this.audio.pause();
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          if (this.audio.src && this.audio.readyState >= 2) {
+            await this.audio.play();
+          }
+        } catch (error) {
+          console.warn("Play interrupted:", error.name);
+        } finally {
           this.isTransitioning = false;
-        }, 50);
-      }
-    },
+        }
+      },
 
-    // Load new playlist/tracks safely
-    async loadNewPlaylist(tracks, artistId = null) {
-      // Stop current playback
-      this.safePause();
+      safePause() {
+        if (this.isTransitioning) return;
+        try {
+          this.isTransitioning = true;
+          this.audio.pause();
+        } finally {
+          setTimeout(() => (this.isTransitioning = false), 50);
+        }
+      },
 
-      // Reset audio src để tránh conflict
-      this.audio.src = "";
+      loadCurrentSong() {
+        if (this.songs.length === 0) return;
+        const song = this.songs[this.currentIndex];
+        this.playerTitle.textContent = song.name;
+        this.playerArtist.textContent = song.artist;
+        this.playerImage.src = song.pathThumb;
+        this.audio.src = song.path;
+        this.audio.load();
+      },
 
-      // Update songs data
-      this.songs = tracks.map((track) => ({
-        id: track.id || track.track_id,
-        name: track.title || track.track_title,
-        path: track.audio_url || track.track_audio_url,
-        artist: track.artist_name || track.track_artist_name,
-        pathThumb: track.image_url || track.album_cover_image_url,
-        duration: track.duration || track.track_duration,
-        albumTitle: track.album_title || track.track_album_title,
-        playCount: track.play_count || track.track_play_count,
-      }));
+      async loadNewPlaylist(tracks, artistId = null) {
+        this.safePause();
+        this.audio.src = "";
 
-      // Reset player state
-      this.currentIndex = 0;
-      this.historySong = [];
-
-      // Save to localStorage
-      localStorage.setItem("currentIndex", this.currentIndex);
-      localStorage.setItem("currentTracks", JSON.stringify(tracks));
-      if (artistId) {
-        localStorage.setItem("currentArtistId", artistId);
-      }
-
-      // Load first song
-      if (this.songs.length > 0) {
-        this.loadCurrentSong();
-      }
-    },
-
-    // Load data from localStorage on init
-    loadFromStorage() {
-      const currentTracks = JSON.parse(
-        localStorage.getItem("currentTracks") || "[]"
-      );
-      const currentIndex = Number(localStorage.getItem("currentIndex")) || 0;
-
-      if (currentTracks.length > 0) {
-        this.songs = currentTracks.map((track) => ({
+        this.songs = tracks.map((track) => ({
           id: track.id || track.track_id,
           name: track.title || track.track_title,
           path: track.audio_url || track.track_audio_url,
-          artist: track.album_title || track.track_album_title,
-          pathThumb: track.image_url || track.album_cover_image_url,
+          artist: track.artist_name || track.track_artist_name,
+          pathThumb: track.image_url || track.track_image_url || DEFAULT_IMAGE,
           duration: track.duration || track.track_duration,
-          albumTitle: track.album_title || track.track_album_title,
-          playCount: track.play_count || track.track_play_count,
         }));
 
-        this.currentIndex = Math.min(currentIndex, this.songs.length - 1);
+        this.currentIndex = 0;
+        appState.setCurrentIndex(0);
+        appState.setCurrentTracks(tracks);
+        if (artistId) appState.setCurrentArtistId(artistId);
+
+        if (this.songs.length > 0) this.loadCurrentSong();
+      },
+
+      async changeIndexSong(step) {
+        if (this.songs.length === 0 || this.isTransitioning) return;
+        this.safePause();
+
+        if (!this.isShuffle) {
+          this.currentIndex =
+            (this.currentIndex + step + this.songs.length) % this.songs.length;
+        } else {
+          this.currentIndex = Math.floor(Math.random() * this.songs.length);
+        }
+
+        appState.setCurrentIndex(this.currentIndex);
         this.loadCurrentSong();
-      }
-    },
 
-    getCurrentSong() {
-      return this.songs[this.currentIndex];
-    },
-
-    loadCurrentSong() {
-      if (this.songs.length === 0) return;
-
-      const currentSong = this.getCurrentSong();
-      this.playerTitle.textContent = currentSong.name;
-      this.playerArtist.textContent = currentSong.artist;
-      this.playerImage.src = currentSong.pathThumb;
-      this.playerImage.alt = currentSong.name;
-
-      // Set audio src and wait for it to load
-      this.audio.src = currentSong.path;
-      this.audio.load(); // Force reload
-    },
-
-    addToHistory(index) {
-      if (this.historySong.length === this.songs.length) {
-        this.historySong = [];
-      }
-
-      if (!this.historySong.includes(index)) {
-        this.historySong.push(index);
-      }
-    },
-
-    getRandomSong() {
-      if (this.historySong.length === this.songs.length) {
-        this.historySong = [];
-      }
-
-      let index;
-      do {
-        index = Math.floor(Math.random() * this.songs.length);
-      } while (this.historySong.includes(index) && this.songs.length > 1);
-
-      return index;
-    },
-
-    updatePageTitle(song, isPlaying) {
-      const playingStatus = isPlaying ? "▶️" : "⏸️";
-      document.title = `${playingStatus} ${song.name} - ${song.albumTitle}`;
-    },
-
-    async changeIndexSong(step) {
-      if (this.songs.length === 0 || this.isTransitioning) return;
-
-      // Stop current playback
-      this.safePause();
-
-      if (!this.isShuffle) {
-        this.currentIndex =
-          (this.currentIndex + step + this.songs.length) % this.songs.length;
-      } else {
-        this.currentIndex = this.getRandomSong();
-      }
-
-      this.addToHistory(this.currentIndex);
-      localStorage.setItem("currentIndex", this.currentIndex);
-
-      // Update UI từ localStorage
-      this.updateTrackUI();
-
-      this.loadCurrentSong();
-
-      setTimeout(async () => {
-        await this.safePlay();
-      }, 200);
-    },
-
-    // Update track UI without API calls
-    updateTrackUI() {
-      const currentTracks = JSON.parse(
-        localStorage.getItem("currentTracks") || "[]"
-      );
-      const currentArtistId = localStorage.getItem("currentArtistId");
-
-      if (currentTracks.length > 0 && elements.popularSection) {
-        elements.popularSection.innerHTML = renderTracks(
-          currentTracks,
-          currentArtistId
-        );
-      }
-    },
-
-    formatTime(sec) {
-      const minutes = Math.floor(sec / 60);
-      const seconds = Math.floor(sec % 60);
-      return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-    },
-
-    updateProgress() {
-      if (!this.isScrolling && this.audio.duration) {
-        const percent = (this.audio.currentTime / this.audio.duration) * 100;
-        this.progressFill.style.width = percent + "%";
-        this.currentTimeEl.textContent = this.formatTime(
-          this.audio.currentTime
-        );
-      }
-    },
-
-    updateVolume() {
-      const percent = this.audio.volume * 100;
-      this.volumeFill.style.width = percent + "%";
-    },
-
-    setupProgressBar() {
-      this.progressBar.addEventListener("click", (e) => {
-        if (!this.audio.duration) return;
-
-        const rect = this.progressBar.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
-        this.audio.currentTime = percent * this.audio.duration;
-      });
-
-      // Handle drag for progress
-      let isDragging = false;
-
-      this.progressHandle.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        this.isScrolling = true;
-        e.preventDefault();
-      });
-
-      document.addEventListener("mousemove", (e) => {
-        if (!isDragging || !this.audio.duration) return;
-
-        const rect = this.progressBar.getBoundingClientRect();
-        let percent = (e.clientX - rect.left) / rect.width;
-        percent = Math.max(0, Math.min(1, percent));
-
-        this.progressFill.style.width = percent * 100 + "%";
-        this.currentTimeEl.textContent = this.formatTime(
-          percent * this.audio.duration
-        );
-      });
-
-      document.addEventListener("mouseup", (e) => {
-        if (isDragging) {
-          const rect = this.progressBar.getBoundingClientRect();
-          let percent = (e.clientX - rect.left) / rect.width;
-          percent = Math.max(0, Math.min(1, percent));
-
-          this.audio.currentTime = percent * this.audio.duration;
-          isDragging = false;
-          this.isScrolling = false;
+        const currentTracks = appState.getCurrentTracks();
+        const artistId = appState.getCurrentArtistId();
+        if (elements.popularSection && currentTracks.length > 0) {
+          elements.popularSection.innerHTML = renderTracks(
+            currentTracks,
+            artistId
+          );
         }
-      });
-    },
 
-    setupVolumeBar() {
-      this.volumeBar.addEventListener("click", (e) => {
-        const rect = this.volumeBar.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
-        this.audio.volume = Math.max(0, Math.min(1, percent));
-        this.updateVolume();
-      });
+        setTimeout(() => this.safePlay(), 200);
+      },
 
-      // Handle drag for volume
-      let isDragging = false;
-
-      this.volumeHandle.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        e.preventDefault();
-      });
-
-      document.addEventListener("mousemove", (e) => {
-        if (!isDragging) return;
-
-        const rect = this.volumeBar.getBoundingClientRect();
-        let percent = (e.clientX - rect.left) / rect.width;
-        percent = Math.max(0, Math.min(1, percent));
-
-        this.audio.volume = percent;
-        this.updateVolume();
-      });
-
-      document.addEventListener("mouseup", () => {
-        isDragging = false;
-      });
-    },
-
-    init() {
-      // Load data from localStorage first
-      this.loadFromStorage();
-
-      // Play/Pause button với safe handling
-      this.playBtn.addEventListener("click", async () => {
-        if (this.songs.length === 0) return;
-
-        if (this.audio.paused) {
-          await this.safePlay();
-        } else {
-          this.safePause();
+      init() {
+        const tracks = appState.getCurrentTracks();
+        if (tracks.length > 0) {
+          this.songs = tracks.map((track) => ({
+            id: track.id || track.track_id,
+            name: track.title || track.track_title,
+            path: track.audio_url || track.track_audio_url,
+            artist: track.artist_name || track.track_artist_name,
+            pathThumb:
+              track.image_url || track.track_image_url || DEFAULT_IMAGE,
+            duration: track.duration || track.track_duration,
+          }));
+          this.currentIndex = appState.getCurrentIndex();
+          this.loadCurrentSong();
         }
-      });
 
-      // Audio event listeners
-      this.audio.addEventListener("play", () => {
-        this.updatePageTitle(this.getCurrentSong(), true);
-        const icon = this.playBtn.querySelector("i");
-        const iconLarge = elements.playBtnLarge.querySelector("i");
-        icon.classList.remove("fa-play");
-        icon.classList.add("fa-pause");
-        iconLarge.classList.remove("fa-play");
-        iconLarge.classList.add("fa-pause");
-      });
+        this.playBtn?.addEventListener("click", async () => {
+          if (this.songs.length === 0) return;
+          this.audio.paused ? await this.safePlay() : this.safePause();
+        });
 
-      this.audio.addEventListener("pause", () => {
-        this.updatePageTitle(this.getCurrentSong(), false);
-        const icon = this.playBtn.querySelector("i");
-        icon.classList.remove("fa-pause");
-        icon.classList.add("fa-play");
-        const iconLarge = elements.playBtnLarge.querySelector("i");
-        iconLarge.classList.add("fa-play");
-        iconLarge.classList.remove("fa-pause");
-      });
+        this.audio.addEventListener("play", () => {
+          const icon = this.playBtn.querySelector("i");
+          icon.classList.remove("fa-play");
+          icon.classList.add("fa-pause");
+        });
 
-      this.audio.addEventListener("loadedmetadata", () => {
-        this.totalTimeEl.textContent = this.formatTime(this.audio.duration);
-      });
+        this.audio.addEventListener("pause", () => {
+          const icon = this.playBtn.querySelector("i");
+          icon.classList.remove("fa-pause");
+          icon.classList.add("fa-play");
+        });
 
-      this.audio.addEventListener("timeupdate", () => {
-        this.updateProgress();
-      });
+        this.audio.addEventListener("loadedmetadata", () => {
+          this.totalTimeEl.textContent = formatTime(this.audio.duration);
+        });
 
-      this.audio.addEventListener("ended", async () => {
-        if (this.isRepeat) {
-          await this.safePlay();
-        } else {
-          await this.changeIndexSong(this.NEXT);
-        }
-      });
+        this.audio.addEventListener("timeupdate", () => {
+          if (this.audio.duration) {
+            const percent =
+              (this.audio.currentTime / this.audio.duration) * 100;
+            this.progressFill.style.width = percent + "%";
+            this.currentTimeEl.textContent = formatTime(this.audio.currentTime);
+          }
+        });
 
-      this.audio.addEventListener("error", (e) => {
-        console.error("Audio error:", e);
-        // Try to play next song on error
-        setTimeout(() => {
-          this.changeIndexSong(this.NEXT);
-        }, 1000);
-      });
-
-      // Control buttons với async handling
-      this.nextBtn.addEventListener("click", async () => {
-        await this.changeIndexSong(this.NEXT);
-      });
-
-      this.prevBtn.addEventListener("click", async () => {
-        if (this.audio.currentTime < this.timeToPrev) {
-          await this.changeIndexSong(this.PREV);
-        } else {
-          this.audio.currentTime = 0;
-        }
-      });
-
-      // Repeat button
-      this.repeatBtn.classList.toggle("active", this.isRepeat);
-      this.repeatBtn.addEventListener("click", () => {
-        this.isRepeat = !this.isRepeat;
-        localStorage.setItem("isRepeat", this.isRepeat);
-        this.repeatBtn.classList.toggle("active", this.isRepeat);
-      });
-
-      // Shuffle button
-      this.shuffleBtn.classList.toggle("active", this.isShuffle);
-      this.shuffleBtn.addEventListener("click", () => {
-        this.isShuffle = !this.isShuffle;
-        localStorage.setItem("isShuffle", this.isShuffle);
-        this.shuffleBtn.classList.toggle("active", this.isShuffle);
-      });
-
-      // Volume button (mute/unmute)
-      this.volumeBtn.addEventListener("click", () => {
-        if (this.audio.volume > 0) {
-          this.audio.volume = 0;
-        } else {
-          this.audio.volume = 0.7;
-        }
-        this.updateVolume();
-      });
-
-      // Keyboard shortcuts
-      document.addEventListener("keydown", async (e) => {
-        if (this.songs.length === 0) return;
-
-        // Kiểm tra nếu đang focus vào input thì không xử lý Space
-        const activeElement = document.activeElement;
-        const isInputFocused =
-          activeElement &&
-          (activeElement.tagName === "INPUT" ||
-            activeElement.tagName === "TEXTAREA" ||
-            activeElement.isContentEditable);
-
-        if (e.code === "Space" && !isInputFocused) {
-          e.preventDefault();
-          if (this.audio.paused) {
+        this.audio.addEventListener("ended", async () => {
+          if (this.isRepeat) {
             await this.safePlay();
           } else {
-            this.safePause();
+            await this.changeIndexSong(1);
           }
-        }
+        });
 
-        if (e.code === "ArrowRight" && !isInputFocused) {
-          e.preventDefault();
-          await this.changeIndexSong(this.NEXT);
-        }
-        if (e.code === "ArrowLeft" && !isInputFocused) {
-          e.preventDefault();
-          await this.changeIndexSong(this.PREV);
-        }
-      });
+        this.nextBtn?.addEventListener("click", () => this.changeIndexSong(1));
+        this.prevBtn?.addEventListener("click", () => this.changeIndexSong(-1));
 
-      // Large play button
-      elements.playBtnLarge.addEventListener("click", async (e) => {
-        e.preventDefault();
-        if (this.songs.length === 0) return;
+        this.repeatBtn?.addEventListener("click", () => {
+          this.isRepeat = !this.isRepeat;
+          this.repeatBtn.classList.toggle("active", this.isRepeat);
+        });
 
-        if (this.audio.paused) {
-          await this.safePlay();
-        } else {
-          this.safePause();
-        }
-      });
+        this.shuffleBtn?.addEventListener("click", () => {
+          this.isShuffle = !this.isShuffle;
+          this.shuffleBtn.classList.toggle("active", this.isShuffle);
+        });
 
-      // Setup progress and volume bars
-      this.setupProgressBar();
-      this.setupVolumeBar();
+        this.progressBar?.addEventListener("click", (e) => {
+          if (!this.audio.duration) return;
+          const rect = this.progressBar.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          this.audio.currentTime = percent * this.audio.duration;
+        });
 
-      // Initialize volume display
-      this.updateVolume();
+        this.volumeBar?.addEventListener("click", (e) => {
+          const rect = this.volumeBar.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          this.audio.volume = Math.max(0, Math.min(1, percent));
+          this.volumeFill.style.width = this.audio.volume * 100 + "%";
+        });
 
-      console.log("Player initialized");
-    },
-  };
+        document.addEventListener("keydown", async (e) => {
+          if (this.songs.length === 0) return;
+          const isInputFocused =
+            document.activeElement &&
+            (document.activeElement.tagName === "INPUT" ||
+              document.activeElement.tagName === "TEXTAREA");
 
-  // Make player globally accessible
-  window.player = player;
+          if (e.code === "Space" && !isInputFocused) {
+            e.preventDefault();
+            this.audio.paused ? await this.safePlay() : this.safePause();
+          }
+          if (e.code === "ArrowRight" && !isInputFocused) {
+            e.preventDefault();
+            await this.changeIndexSong(1);
+          }
+          if (e.code === "ArrowLeft" && !isInputFocused) {
+            e.preventDefault();
+            await this.changeIndexSong(-1);
+          }
+        });
+      },
+    };
 
-  // Start the application
+    player.init();
+    return player;
+  }
+
   await init();
-
-  // Initialize player
-  player.init();
-
-  console.log("Music Player Application Initialized Successfully");
+  console.log("✅ Spotify App Initialized - Player only plays on track click");
 });
