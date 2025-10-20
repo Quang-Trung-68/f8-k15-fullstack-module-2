@@ -1,6 +1,5 @@
 // ============================================
 // FILE: utils/helpers.js
-// Copy this to: utils/helpers.js
 // ============================================
 
 export const formatSeconds = (seconds) => {

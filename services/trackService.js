@@ -1,6 +1,5 @@
 // ============================================
 // FILE: services/trackService.js
-// Copy this to: services/trackService.js
 // ============================================
 
 import { trackAPI } from "../api/endpoints.js";

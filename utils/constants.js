@@ -1,6 +1,5 @@
 // ============================================
 // FILE: utils/constants.js
-// Copy this to: utils/constants.js
 // ============================================
 
 export const API_BASE_URL = "https://spotify.f8team.dev/";

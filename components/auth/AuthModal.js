@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/auth/AuthModal.js
-// Copy this to: components/auth/AuthModal.js
 // ============================================
 
 import { authService } from "../../services/authService.js";

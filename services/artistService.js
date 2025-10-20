@@ -1,6 +1,5 @@
 // ============================================
 // FILE: services/artistService.js
-// Copy this to: services/artistService.js
 // ============================================
 
 import { artistAPI } from "../api/endpoints.js";

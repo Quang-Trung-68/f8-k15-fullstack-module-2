@@ -1,6 +1,5 @@
 // ============================================
 // FILE: services/playlistService.js
-// Copy this to: services/playlistService.js
 // ============================================
 
 import { playlistAPI, artistAPI } from "../api/endpoints.js";

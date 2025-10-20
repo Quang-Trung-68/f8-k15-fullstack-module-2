@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/auth/UserMenu.js
-// Copy this to: components/auth/UserMenu.js
 // ============================================
 
 import { authService } from "../../services/authService.js";

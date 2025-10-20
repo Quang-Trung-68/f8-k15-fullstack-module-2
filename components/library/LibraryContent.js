@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/library/LibraryContent.js
-// Copy this to: components/library/LibraryContent.js
 // ============================================
 
 import { playlistService } from "../../services/playlistService.js";

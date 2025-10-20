@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/artist/ArtistGrid.js
-// Copy this to: components/artist/ArtistGrid.js
 // ============================================
 
 import { DEFAULT_IMAGE } from "../../utils/constants.js";

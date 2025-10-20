@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/artist/ArtistHero.js
-// Copy this to: components/artist/ArtistHero.js
 // ============================================
 
 import { DEFAULT_IMAGE } from "../../utils/constants.js";

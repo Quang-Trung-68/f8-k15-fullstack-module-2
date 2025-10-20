@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/playlist/PlaylistGrid.js
-// Copy this to: components/playlist/PlaylistGrid.js
 // ============================================
 
 import { DEFAULT_IMAGE } from "../../utils/constants.js";

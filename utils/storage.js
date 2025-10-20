@@ -1,6 +1,5 @@
 // ============================================
 // FILE: utils/storage.js
-// Copy this to: utils/storage.js
 // ============================================
 
 export const storage = {

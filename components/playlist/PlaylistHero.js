@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/playlist/PlaylistHero.js
-// Copy this to: components/playlist/PlaylistHero.js
 // ============================================
 
 import { DEFAULT_IMAGE } from "../../utils/constants.js";

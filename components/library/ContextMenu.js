@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/library/ContextMenu.js
-// Copy this to: components/library/ContextMenu.js
 // ============================================
 
 export const ContextMenu = (elements, handlers) => {

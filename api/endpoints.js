@@ -1,6 +1,5 @@
 // ============================================
 // FILE: api/endpoints.js
-// Copy this to: api/endpoints.js
 // ============================================
 
 import api from "../utils/api.js";

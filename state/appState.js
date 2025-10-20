@@ -1,6 +1,5 @@
 // ============================================
 // FILE: state/appState.js
-// Copy this to: state/appState.js
 // ============================================
 
 import { storage } from "../utils/storage.js";

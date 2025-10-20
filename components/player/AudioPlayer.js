@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/player/AudioPlayer.js
-// Copy this to: components/player/AudioPlayer.js
 // ============================================
 
 import { appState } from "../../state/appState.js";

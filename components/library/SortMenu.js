@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/library/SortMenu.js
-// Copy this to: components/library/SortMenu.js
 // ============================================
 
 import { appState } from "../../state/appState.js";

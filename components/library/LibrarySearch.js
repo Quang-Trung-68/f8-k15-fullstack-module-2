@@ -1,6 +1,5 @@
 // ============================================
 // FILE: components/library/LibrarySearch.js
-// Copy this to: components/library/LibrarySearch.js
 // ============================================
 
 import { debounce } from "../../utils/helpers.js";

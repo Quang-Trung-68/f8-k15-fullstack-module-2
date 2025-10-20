@@ -1,6 +1,5 @@
 // ============================================
 // FILE: services/authService.js
-// Copy this to: services/authService.js
 // ============================================
 
 import { authAPI } from "../api/endpoints.js";
