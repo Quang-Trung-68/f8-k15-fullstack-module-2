@@ -8,7 +8,7 @@ export const storage = {
       const item = localStorage.getItem(key);
       if (item === null) return defaultValue;
 
-      // ✅ FIX: Thử parse JSON, nếu lỗi thì trả về raw string
+      // Thử parse JSON, nếu lỗi thì trả về raw string
       try {
         return JSON.parse(item);
       } catch {
@@ -21,10 +21,9 @@ export const storage = {
 
   set: (key, value) => {
     try {
-      // ✅ FIX: Nếu là string thì lưu trực tiếp, còn lại stringify
+      // Nếu là string thì lưu trực tiếp, còn lại stringify
       const data = typeof value === "string" ? value : JSON.stringify(value);
       localStorage.setItem(key, data);
-      console.log(`💾 Storage SET: ${key} =`, value);
     } catch (error) {
       console.error(`❌ Storage SET error for ${key}:`, error);
     }
@@ -32,11 +31,9 @@ export const storage = {
 
   remove: (key) => {
     localStorage.removeItem(key);
-    console.log(`🗑️ Storage REMOVE: ${key}`);
   },
 
   clear: () => {
     localStorage.clear();
-    console.log("🗑️ Storage CLEAR ALL");
   },
 };

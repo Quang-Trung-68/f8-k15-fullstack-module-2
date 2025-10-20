@@ -1152,6 +1152,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         this.playerImage.src = song.pathThumb;
         this.audio.src = song.path;
         this.audio.load();
+        document.title = song.name;
       },
 
       async loadNewPlaylist(tracks, artistId = null) {

@@ -8,10 +8,7 @@ import { FILTER_TYPES, SORT_TYPES } from "../utils/constants.js";
 export const appState = {
   // User state
   isAuthenticated: () => {
-    // const hasToken = storage.get("accessToken") !== "";
     const hasFlag = storage.get("isAuthentication") === true;
-    // console.log(hasFlag, hasToken);
-    console.log(hasFlag);
     return hasFlag;
   },
   getUserInfo: () => storage.get("userInfo"),
