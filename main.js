@@ -1,5 +1,5 @@
 // ============================================
-// FILE: main.js - Refactored Version
+// FILE: main.js
 // ============================================
 
 import { AuthModal } from "./components/auth/AuthModal.js";
@@ -272,6 +272,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     showUICreatePlaylist(false);
     elements.createPlaylistBtn.disabled = false;
     elements.createPlaylistBtn.style.display = "block";
+
+    // Remove active class from all library items
+    removeAllLibraryActiveClasses();
+  };
+
+  // NEW: Helper function to remove active class from library items
+  const removeAllLibraryActiveClasses = () => {
+    document.querySelectorAll(".library-item").forEach((item) => {
+      item.classList.remove("active");
+    });
+  };
+
+  // NEW: Helper function to set active library item
+  const setActiveLibraryItem = (itemId, itemType) => {
+    removeAllLibraryActiveClasses();
+    const selector =
+      itemType === "playlist"
+        ? `.library-item-playlist[data-id="${itemId}"]`
+        : `.library-item-artist[data-id="${itemId}"]`;
+    const item = document.querySelector(selector);
+    if (item) {
+      item.classList.add("active");
+    }
   };
 
   // ============================================
@@ -290,6 +313,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       appState.setCurrentTracks(tracks);
       appState.setCurrentArtistId(null);
+
+      // Set active library item
+      setActiveLibraryItem(playlistId, "playlist");
 
       attachHeroEvents();
       attachTrackEvents();
@@ -311,6 +337,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       appState.setCurrentArtistId(artist.id);
       appState.setCurrentTracks(tracks);
+
+      // Set active library item
+      setActiveLibraryItem(artistId, "artist");
 
       attachHeroEvents();
       attachTrackEvents();
@@ -353,7 +382,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         "click",
         requireAuth(async () => {
           try {
-            //  Lấy từ hero-content
             const heroContent = document.querySelector(".hero-content");
             const playlistId = heroContent?.dataset.id;
 
@@ -398,7 +426,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         "click",
         requireAuth(async () => {
           try {
-            //  Lấy từ hero-content
             const heroContent = document.querySelector(".hero-content");
             const artistId = heroContent?.dataset.id;
 
@@ -508,6 +535,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           artistId
         );
         attachTrackEvents();
+
+        // Update large play button icon
+        updateLargePlayButton();
       }
     });
   };
@@ -534,6 +564,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
       );
     });
+  };
+
+  // NEW: Helper function to update large play button icon
+  const updateLargePlayButton = () => {
+    const largeBtn = elements.playBtnLarge;
+    if (!largeBtn) return;
+
+    const icon = largeBtn.querySelector("i");
+    if (!icon) return;
+
+    if (player.audio.paused) {
+      icon.classList.remove("fa-pause");
+      icon.classList.add("fa-play");
+    } else {
+      icon.classList.remove("fa-play");
+      icon.classList.add("fa-pause");
+    }
   };
 
   // ============================================
@@ -676,32 +723,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       playlistModal.open(playlist);
     });
 
-    // Large play button
-    elements.playBtnLarge?.addEventListener("click", async (e) => {
-      e.preventDefault();
-
-      const currentTracks = appState.getCurrentTracks();
-      if (currentTracks.length === 0) return;
-
-      if (player.songs.length === 0 || player.audio.src === "") {
-        await player.loadNewPlaylist(
-          currentTracks,
-          appState.getCurrentArtistId()
-        );
-        player.currentIndex = 0;
-        appState.setCurrentIndex(0);
-        player.loadCurrentSong();
-        setTimeout(() => player.safePlay(), 200);
-
-        elements.popularSection.innerHTML = trackList.render(
-          currentTracks,
-          appState.getCurrentArtistId()
-        );
-      } else {
-        player.audio.paused ? await player.safePlay() : player.safePause();
-      }
-    });
-
+    // UPDATED: Large play button with proper state checking
     elements.playBtnLarge?.addEventListener("click", async (e) => {
       e.preventDefault();
 
@@ -710,24 +732,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const icon = elements.playBtnLarge.querySelector("i");
 
-      // Kiểm tra nếu đang phát cùng playlist/artist
+      // Check if we're playing the same playlist/artist
       const isSamePlaylist =
         player.songs.length > 0 &&
-        JSON.stringify(player.songs) ===
-          JSON.stringify(
-            currentTracks.map((track) => ({
-              id: track.id || track.track_id,
-              name: track.title || track.track_title,
-              path: track.audio_url || track.track_audio_url,
-              artist: track.artist_name || track.track_artist_name,
-              pathThumb:
-                track.image_url || track.album_cover_image_url || DEFAULT_IMAGE,
-              duration: track.duration || track.track_duration,
-            }))
-          );
+        player.audio.src !== "" &&
+        JSON.stringify(currentTracks.map((t) => t.id || t.track_id)) ===
+          JSON.stringify(player.songs.map((s) => s.id));
 
-      if (!isSamePlaylist || player.audio.src === "") {
-        // Load playlist mới
+      if (!isSamePlaylist) {
+        // Load new playlist
         await player.loadNewPlaylist(
           currentTracks,
           appState.getCurrentArtistId()
@@ -736,7 +749,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         appState.setCurrentIndex(0);
         player.loadCurrentSong();
 
-        // Đổi icon thành pause
+        // Change icon to pause
         icon.classList.remove("fa-play");
         icon.classList.add("fa-pause");
 
@@ -748,7 +761,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
         attachTrackEvents();
       } else {
-        // Toggle play/pause
+        // Toggle play/pause for same playlist
         if (player.audio.paused) {
           await player.safePlay();
           icon.classList.remove("fa-play");
@@ -812,5 +825,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ============================================
 
   await initHomePage();
-  console.log("✅ Spotify App Initialized with Components");
+  console.log("✅ Spotify App Initialized with Fixed Highlights");
 });

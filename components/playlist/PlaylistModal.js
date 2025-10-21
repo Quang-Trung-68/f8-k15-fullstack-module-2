@@ -1,5 +1,5 @@
 // ============================================
-// FILE: components/playlist/PlaylistModal.js - Updated
+// FILE: components/playlist/PlaylistModal.js
 // ============================================
 
 import { playlistService } from "../../services/playlistService.js";

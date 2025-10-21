@@ -1,5 +1,5 @@
 // ============================================
-// FILE: components/player/AudioPlayer.js - Updated
+// FILE: components/player/AudioPlayer.js
 // ============================================
 
 import { appState } from "../../state/appState.js";
