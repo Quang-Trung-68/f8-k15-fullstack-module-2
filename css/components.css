@@ -1108,3 +1108,152 @@
   text-overflow: ellipsis;
   font-weight: 400;
 }
+
+/* Track item đang playing */
+.track-item.playing {
+  background-color: rgba(
+    29,
+    185,
+    84,
+    0.15
+  ) !important; /* Màu xanh nhẹ Spotify */
+  border-left: 3px solid var(--accent-primary);
+  position: relative;
+}
+
+.track-item.playing::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Track number khi đang playing */
+.track-item.playing .track-number {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* Playing icon */
+.playing-icon {
+  color: var(--accent-primary);
+  font-size: 16px;
+  animation: soundWave 1s ease-in-out infinite;
+}
+
+@keyframes soundWave {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.3);
+  }
+}
+
+/* Track name khi đang playing */
+.track-item.playing .track-name {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* Track duration khi đang playing */
+.track-item.playing .track-duration {
+  color: var(--accent-primary);
+}
+
+/* Hover effect cho track đang playing */
+.track-item.playing:hover {
+  background-color: rgba(29, 185, 84, 0.25) !important;
+}
+
+/* Nút like trong track đang playing */
+.track-item.playing .track-is-liked {
+  color: var(--accent-primary);
+}
+
+/* Large Play Button States */
+.play-btn-large {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-primary);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.play-btn-large::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.play-btn-large:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.play-btn-large:hover {
+  background-color: var(--accent-hover);
+  transform: scale(1.06);
+}
+
+.play-btn-large:active {
+  transform: scale(0.98);
+}
+
+.play-btn-large i {
+  font-size: 24px;
+  margin-left: 2px;
+  position: relative;
+  z-index: 1;
+  transition: all 0.2s;
+}
+
+/* Icon pause không cần margin-left */
+.play-btn-large i.fa-pause {
+  margin-left: 0;
+}
+
+/* Animation khi chuyển đổi play/pause */
+@keyframes iconChange {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.8);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.play-btn-large i {
+  animation: iconChange 0.3s ease;
+}

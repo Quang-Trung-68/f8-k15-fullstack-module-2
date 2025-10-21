@@ -359,6 +359,34 @@ export const AudioPlayer = (elements) => {
         }
       });
 
+      this.audio.addEventListener("play", () => {
+        const icon = this.playBtn.querySelector("i");
+        icon.classList.remove("fa-play");
+        icon.classList.add("fa-pause");
+
+        // Đồng bộ large play button
+        const largeBtn = document.querySelector(".play-btn-large");
+        if (largeBtn) {
+          const largeIcon = largeBtn.querySelector("i");
+          largeIcon.classList.remove("fa-play");
+          largeIcon.classList.add("fa-pause");
+        }
+      });
+
+      this.audio.addEventListener("pause", () => {
+        const icon = this.playBtn.querySelector("i");
+        icon.classList.remove("fa-pause");
+        icon.classList.add("fa-play");
+
+        // Đồng bộ large play button
+        const largeBtn = document.querySelector(".play-btn-large");
+        if (largeBtn) {
+          const largeIcon = largeBtn.querySelector("i");
+          largeIcon.classList.remove("fa-pause");
+          largeIcon.classList.add("fa-play");
+        }
+      });
+
       this.setupProgressBar();
       this.setupVolumeBar();
     },

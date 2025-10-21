@@ -353,7 +353,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         "click",
         requireAuth(async () => {
           try {
-            const playlistId = playlistFollowBtn.dataset.id;
+            //  Lấy từ hero-content
+            const heroContent = document.querySelector(".hero-content");
+            const playlistId = heroContent?.dataset.id;
+
+            if (!playlistId) {
+              console.error("Playlist ID not found");
+              showToast("Cannot find playlist ID", "error");
+              return;
+            }
+
             const isFollowing = playlistFollowBtn.dataset.following === "true";
 
             if (isFollowing) {
@@ -389,7 +398,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         "click",
         requireAuth(async () => {
           try {
-            const artistId = artistFollowBtn.dataset.id;
+            //  Lấy từ hero-content
+            const heroContent = document.querySelector(".hero-content");
+            const artistId = heroContent?.dataset.id;
+
+            if (!artistId) {
+              console.error("Artist ID not found");
+              showToast("Cannot find artist ID", "error");
+              return;
+            }
+
             const isFollowing = artistFollowBtn.dataset.following === "true";
 
             if (isFollowing) {
@@ -681,6 +699,65 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
       } else {
         player.audio.paused ? await player.safePlay() : player.safePause();
+      }
+    });
+
+    elements.playBtnLarge?.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const currentTracks = appState.getCurrentTracks();
+      if (currentTracks.length === 0) return;
+
+      const icon = elements.playBtnLarge.querySelector("i");
+
+      // Kiểm tra nếu đang phát cùng playlist/artist
+      const isSamePlaylist =
+        player.songs.length > 0 &&
+        JSON.stringify(player.songs) ===
+          JSON.stringify(
+            currentTracks.map((track) => ({
+              id: track.id || track.track_id,
+              name: track.title || track.track_title,
+              path: track.audio_url || track.track_audio_url,
+              artist: track.artist_name || track.track_artist_name,
+              pathThumb:
+                track.image_url || track.album_cover_image_url || DEFAULT_IMAGE,
+              duration: track.duration || track.track_duration,
+            }))
+          );
+
+      if (!isSamePlaylist || player.audio.src === "") {
+        // Load playlist mới
+        await player.loadNewPlaylist(
+          currentTracks,
+          appState.getCurrentArtistId()
+        );
+        player.currentIndex = 0;
+        appState.setCurrentIndex(0);
+        player.loadCurrentSong();
+
+        // Đổi icon thành pause
+        icon.classList.remove("fa-play");
+        icon.classList.add("fa-pause");
+
+        setTimeout(() => player.safePlay(), 200);
+
+        elements.popularSection.innerHTML = trackList.render(
+          currentTracks,
+          appState.getCurrentArtistId()
+        );
+        attachTrackEvents();
+      } else {
+        // Toggle play/pause
+        if (player.audio.paused) {
+          await player.safePlay();
+          icon.classList.remove("fa-play");
+          icon.classList.add("fa-pause");
+        } else {
+          player.safePause();
+          icon.classList.remove("fa-pause");
+          icon.classList.add("fa-play");
+        }
       }
     });
 
