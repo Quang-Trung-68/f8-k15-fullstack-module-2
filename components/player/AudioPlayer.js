@@ -111,7 +111,7 @@ export const AudioPlayer = (elements) => {
       this.audio.load();
 
       // Update document title
-      document.title = `${song.name} - ${song.artist}`;
+      document.title = `${song.name}`;
     },
 
     async loadNewPlaylist(tracks, artistId = null) {
