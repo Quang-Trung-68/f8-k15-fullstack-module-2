@@ -1,9 +1,10 @@
 // ============================================
-// FILE: components/player/AudioPlayer.js
+// FILE: components/player/AudioPlayer.js - Updated
 // ============================================
 
 import { appState } from "../../state/appState.js";
 import { formatTime } from "../../utils/helpers.js";
+import { DEFAULT_IMAGE } from "../../utils/constants.js";
 
 export const AudioPlayer = (elements) => {
   const player = {
@@ -38,6 +39,7 @@ export const AudioPlayer = (elements) => {
     isScrolling: false,
     isTransitioning: false,
     historySong: [],
+    onTrackChange: null, // Callback when track changes
 
     async safePlay() {
       if (this.isTransitioning) return;
@@ -84,7 +86,8 @@ export const AudioPlayer = (elements) => {
           name: track.title || track.track_title,
           path: track.audio_url || track.track_audio_url,
           artist: track.artist_name || track.track_artist_name,
-          pathThumb: track.image_url || track.album_cover_image_url,
+          pathThumb:
+            track.image_url || track.album_cover_image_url || DEFAULT_IMAGE,
           duration: track.duration || track.track_duration,
         }));
 
@@ -106,6 +109,9 @@ export const AudioPlayer = (elements) => {
       this.playerImage.src = song.pathThumb;
       this.audio.src = song.path;
       this.audio.load();
+
+      // Update document title
+      document.title = `${song.name} - ${song.artist}`;
     },
 
     async loadNewPlaylist(tracks, artistId = null) {
@@ -117,7 +123,8 @@ export const AudioPlayer = (elements) => {
         name: track.title || track.track_title,
         path: track.audio_url || track.track_audio_url,
         artist: track.artist_name || track.track_artist_name,
-        pathThumb: track.image_url || track.album_cover_image_url,
+        pathThumb:
+          track.image_url || track.album_cover_image_url || DEFAULT_IMAGE,
         duration: track.duration || track.track_duration,
       }));
 
@@ -161,6 +168,11 @@ export const AudioPlayer = (elements) => {
 
       this.loadCurrentSong();
       setTimeout(() => this.safePlay(), 200);
+
+      // Trigger callback if defined
+      if (this.onTrackChange) {
+        this.onTrackChange(this.currentIndex);
+      }
     },
 
     updateProgress() {
@@ -256,6 +268,10 @@ export const AudioPlayer = (elements) => {
       updateVolume();
     },
 
+    setTrackChangeCallback(callback) {
+      this.onTrackChange = callback;
+    },
+
     init() {
       this.loadFromStorage();
 
@@ -348,5 +364,6 @@ export const AudioPlayer = (elements) => {
     },
   };
 
+  player.init();
   return player;
 };
