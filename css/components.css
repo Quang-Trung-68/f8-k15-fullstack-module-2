@@ -614,7 +614,7 @@
   font-size: 16px;
 }
 
-/* Progress bars */
+/* Progress bars - base styles */
 .progress-bar,
 .volume-bar {
   position: relative;
@@ -625,20 +625,23 @@
   transition: all var(--transition-fast);
 }
 
+/* Increase height on hover for easier interaction */
 .progress-bar:hover,
 .volume-bar:hover {
   height: 6px;
 }
 
+/* Fill styles */
 .progress-fill,
 .volume-fill {
   height: 100%;
   background-color: var(--text-primary);
   border-radius: 2px;
   position: relative;
-  transition: all var(--transition-fast);
+  transition: width var(--transition-fast);
 }
 
+/* IMPROVED HANDLES */
 .progress-handle,
 .volume-handle {
   position: absolute;
@@ -648,14 +651,141 @@
   width: 12px;
   height: 12px;
   background-color: var(--text-primary);
-  border-radius: var(--radius-full);
-  opacity: 0;
+  border-radius: 50%;
+  cursor: grab;
   transition: all var(--transition-fast);
+  /* LUÔN HIỂN THỊ - opacity: 1 */
+  opacity: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+/* Scale lớn hơn khi hover */
+.progress-bar:hover .progress-handle,
+.volume-bar:hover .volume-handle {
+  transform: translateY(-50%) scale(1.2);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Always show progress handle when audio is playing */
+.player-audio:not([paused]) ~ * .progress-handle {
+  opacity: 1;
+  background-color: var(--accent-primary);
+}
+
+/* Show handle when actively dragging */
+.progress-handle:active,
+.volume-handle:active {
+  opacity: 1;
+  cursor: grabbing;
+  transform: translateY(-50%) scale(1.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Larger hit area for mobile/touch devices */
+.progress-handle::before,
+.volume-handle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  /* Invisible but clickable area */
+}
+
+/* Enhanced hover effect for the entire progress container */
+.progress-container:hover .progress-handle {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.25);
+}
+
+.volume-container:hover .volume-handle {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.25);
+}
+
+/* Active state - when user is interacting */
+.progress-bar.dragging,
+.volume-bar.dragging {
+  height: 8px;
+}
+
+.progress-bar.dragging .progress-handle,
+.volume-bar.dragging .volume-handle {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.4);
+  cursor: grabbing;
+}
+
+/* Green color on hover for Spotify feel */
+.progress-bar:hover .progress-fill,
+.progress-bar.dragging .progress-fill {
+  background-color: var(--accent-primary);
 }
 
 .progress-bar:hover .progress-handle,
-.volume-bar:hover .volume-handle {
+.progress-bar.dragging .progress-handle {
+  background-color: var(--accent-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Make handles larger on mobile for easier interaction */
+  .progress-handle,
+  .volume-handle {
+    width: 16px;
+    height: 16px;
+    opacity: 1;
+  }
+
+  .progress-handle::before,
+  .volume-handle::before {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* For touch devices - always show handles */
+@media (hover: none) {
+  .progress-handle,
+  .volume-handle {
+    opacity: 1;
+    width: 16px;
+    height: 16px;
+  }
+
+  .progress-container:active .progress-handle,
+  .volume-container:active .volume-handle {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.3);
+  }
+}
+
+/* Accessibility - focus states */
+.progress-bar:focus-within .progress-handle,
+.volume-bar:focus-within .volume-handle {
   opacity: 1;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Animation when user starts dragging */
+@keyframes handlePulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(29, 185, 84, 0.5);
+  }
+}
+
+.progress-handle:active,
+.volume-handle:active {
+  animation: handlePulse 0.3s ease-in-out;
 }
 
 /* User avatar */

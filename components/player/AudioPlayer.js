@@ -196,6 +196,7 @@ export const AudioPlayer = (elements) => {
       this.progressHandle.addEventListener("mousedown", (e) => {
         isDragging = true;
         this.isScrolling = true;
+        this.progressBar.classList.add("dragging");
         e.preventDefault();
       });
 
@@ -221,6 +222,7 @@ export const AudioPlayer = (elements) => {
           this.audio.currentTime = percent * this.audio.duration;
           isDragging = false;
           this.isScrolling = false;
+          this.progressBar.classList.remove("dragging");
         }
       });
     },
@@ -242,6 +244,7 @@ export const AudioPlayer = (elements) => {
 
       this.volumeHandle.addEventListener("mousedown", (e) => {
         isDragging = true;
+        this.volumeBar.classList.add("dragging");
         e.preventDefault();
       });
 
@@ -257,7 +260,10 @@ export const AudioPlayer = (elements) => {
       });
 
       document.addEventListener("mouseup", () => {
-        isDragging = false;
+        if (isDragging) {
+          isDragging = false;
+          this.volumeBar.classList.remove("dragging");
+        }
       });
 
       this.volumeBtn.addEventListener("click", () => {
