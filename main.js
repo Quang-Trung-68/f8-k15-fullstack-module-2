@@ -169,6 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
     delete: async (id) => {
       await playlistService.delete(id);
+      await initHomePage();
       await libraryContent.render(
         appState.getFilterType(),
         null,
@@ -723,7 +724,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       playlistModal.open(playlist);
     });
 
-    // UPDATED: Large play button with proper state checking
+    //  Large play button with proper state checking
     elements.playBtnLarge?.addEventListener("click", async (e) => {
       e.preventDefault();
 
