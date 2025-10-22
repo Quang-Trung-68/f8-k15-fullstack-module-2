@@ -277,14 +277,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     removeAllLibraryActiveClasses();
   };
 
-  // NEW: Helper function to remove active class from library items
+  // Helper function to remove active class from library items
   const removeAllLibraryActiveClasses = () => {
     document.querySelectorAll(".library-item").forEach((item) => {
       item.classList.remove("active");
     });
   };
 
-  // NEW: Helper function to set active library item
+  // Helper function to set active library item
   const setActiveLibraryItem = (itemId, itemType) => {
     removeAllLibraryActiveClasses();
     const selector =
@@ -566,7 +566,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
-  // NEW: Helper function to update large play button icon
+  // Helper function to update large play button icon
   const updateLargePlayButton = () => {
     const largeBtn = elements.playBtnLarge;
     if (!largeBtn) return;
@@ -825,5 +825,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ============================================
 
   await initHomePage();
-  console.log("✅ Spotify App Initialized with Fixed Highlights");
+  console.log("✅ Spotify App Initialized");
 });
