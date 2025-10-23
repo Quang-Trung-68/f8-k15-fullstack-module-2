@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     userDropdown: document.getElementById("userDropdown"),
     logoutBtn: document.getElementById("logoutBtn"),
     userName: document.querySelector(".user-name"),
-
+    userMenuDiv: document.querySelector(".user-menu"),
     // Library elements
     libraryContent: document.querySelector(".library-content"),
     navTabPlaylists: document.querySelector(".nav-tab-playlists"),

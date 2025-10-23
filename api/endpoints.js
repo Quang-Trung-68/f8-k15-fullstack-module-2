@@ -37,6 +37,14 @@ export const playlistAPI = {
     api.post(`upload/playlist/${id}/cover`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+  addTrack: (trackId, playlistId) =>
+    api.post(`playlists/${playlistId}/tracks`, {
+      track_id: trackId,
+      position: 0,
+    }),
+  removeTrack:(trackId, playlistId)=>{
+    api.delete(`playlists/${playlistId}/tracks/${trackId}`)
+  }
 };
 
 // Artist endpoints

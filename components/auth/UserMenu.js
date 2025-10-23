@@ -14,10 +14,12 @@ export const UserMenu = (elements, onLogout) => {
       elements.userName.textContent = user.display_name || "";
       elements.actionButtons.style.display = "none";
       elements.userAvatar.style.display = "block";
+      elements.userMenuDiv.style.display = "flex";
     } else {
       elements.userName.textContent = "";
       elements.actionButtons.style.display = "flex";
       elements.userAvatar.style.display = "none";
+      elements.userMenuDiv.style.display = "none";
     }
   };
 

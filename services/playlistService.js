@@ -44,7 +44,10 @@ export const playlistService = {
 
     return { playlists, artists, filterType };
   },
-
+  getMyPlaylists: async () => {
+    const response = await playlistAPI.getMy();
+    return response.data.playlists;
+  },
   getById: async (id) => {
     const response = await playlistAPI.getById(id);
     return response.data;
@@ -81,5 +84,11 @@ export const playlistService = {
     formData.append("cover", file);
     const response = await playlistAPI.uploadCover(id, formData);
     return response.data.file.url;
+  },
+  addTrack: async (trackId, playlistId) => {
+    await playlistAPI.addTrack(trackId, playlistId);
+  },
+  removeTrack: async (trackId, playlistId) => {
+    await playlistAPI.removeTrack(trackId, playlistId);
   },
 };

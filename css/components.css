@@ -796,7 +796,6 @@
   overflow: hidden;
   cursor: pointer;
   transition: transform var(--transition-fast);
-  display: none;
 }
 
 .user-avatar:hover {
@@ -1024,7 +1023,7 @@
 /* User Menu */
 .user-menu {
   position: relative;
-  display: flex;
+  display: none;
   align-items: center;
 }
 
