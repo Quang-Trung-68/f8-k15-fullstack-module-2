@@ -132,9 +132,9 @@
 
 ```
 User fills in form
-  → AuthModal validates input
   → authService.handleAuth(isSignup=true)
   → authAPI.register() calls POST /auth/register
+  → AuthModal validates input
   → Receive response {user, access_token, refresh_token}
   → appState.setAccessToken() saves token
   → appState.setUserInfo() saves user info
@@ -149,9 +149,9 @@ User fills in form
 
 ```
 User enters email/password
-  → AuthModal validates
   → authService.handleAuth(isSignup=false)
   → authAPI.login() calls POST /auth/login
+  → AuthModal validates
   → Save tokens to LocalStorage
   → Update UI (hide Login/Signup buttons, show Avatar)
   → Load user's playlists & followed artists
