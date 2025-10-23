@@ -132,7 +132,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize Track Context Menu
   const trackContextMenu = TrackContextMenu(elements);
   trackContextMenu.init();
-
+  window.onTrackRemovedFromPlaylist = async (playlistId) => {
+    if (currentViewingPlaylistId === playlistId) {
+      await renderPlaylistDetail(playlistId);
+    }
+  };
   // Initialize Library Components
   const libraryContent = LibraryContent(elements);
   const librarySearch = LibrarySearch(elements, async (searchValue) => {
@@ -803,11 +807,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         const trackId = currentTrack.id || currentTrack.track_id;
 
         const rect = elements.addBtn.getBoundingClientRect();
+
+        // Truyền thêm currentTracks để check duplicate
         await trackContextMenu.show(
           rect.left,
           rect.top - 10,
           trackId,
-          currentViewingPlaylistId
+          null, // không truyền currentPlaylistId
+          currentTracks // truyền thêm tracks hiện tại
         );
       })
     );
