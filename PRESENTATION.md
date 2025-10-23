@@ -6,15 +6,15 @@
 
 ---
 
-## 📋 GIỚI THIỆU DỰ ÁN
+## 📋 PROJECT OVERVIEW
 
-### Mục tiêu
+### Objectives
 
-- Xây dựng ứng dụng web music streaming hoàn chỉnh
-- Clone giao diện và chức năng cốt lõi của Spotify
-- Học tập và thực hành fullstack development
+- Build a complete music streaming web application
+- Clone Spotify's interface and core functionality
+- Learn and practice fullstack development
 
-### Công nghệ sử dụng
+### Technologies Used
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6+)
 - **API Integration**: Axios, REST API
@@ -23,42 +23,42 @@
 
 ---
 
-## ✨ TÍNH NĂNG CHÍNH (1/2)
+## ✨ KEY FEATURES (1/2)
 
-### 🔐 Xác thực người dùng
+### 🔐 User Authentication
 
-- Đăng ký tài khoản mới
-- Đăng nhập/Đăng xuất
-- Quản lý phiên đăng nhập
+- New account registration
+- Login/Logout
+- Session management
 
-### 🎵 Phát nhạc
+### 🎵 Music Playback
 
-- Stream nhạc trực tuyến
+- Online music streaming
 - Play/Pause, Next/Previous
 - Shuffle & Repeat mode
 - Volume control & Progress bar
 
 ---
 
-## ✨ TÍNH NĂNG CHÍNH (2/2)
+## ✨ KEY FEATURES (2/2)
 
-### 📋 Quản lý Playlist
+### 📋 Playlist Management
 
-- Tạo/Sửa/Xóa playlist
-- Upload ảnh cover
-- Follow/Unfollow playlists
+- Create/Edit/Delete playlists
+- Upload cover images
+- Follow/Unfollow playlists, artists
 - Like/Unlike tracks
 
-### 🔍 Tìm kiếm & Lọc
+### 🔍 Search & Filter
 
-- Tìm kiếm playlists, artists
-- Filter theo loại (Playlist/Artist)
+- Search playlists, artists
+- Filter by type (Playlist/Artist)
 - Sort: Recents, Alphabetical, Creator
 - 4 view modes: Compact/Default List/Grid
 
 ---
 
-## 🏗️ KIẾN TRÚC DỰ ÁN
+## 🏗️ PROJECT ARCHITECTURE
 
 ```
 📦 Project Structure
@@ -102,71 +102,71 @@
 
 ---
 
-## 🔧 COMPONENTS CHÍNH
+## 🔧 MAIN COMPONENTS
 
 ### AudioPlayer
 
-- Quản lý phát nhạc toàn ứng dụng
-- State management cho tracks
+- Manage music playback across the app
+- State management for tracks
 - Auto play next track
-- Synchronize UI với audio state
+- Synchronize UI with audio state
 
 ### LibraryContent
 
-- Hiển thị playlists & artists
+- Display playlists & artists
 - Dynamic rendering
 - Real-time search & filter
 - 4 view modes
 
 ### PlaylistModal
 
-- CRUD operations cho playlist
+- CRUD operations for playlists
 - Image upload functionality
 - Form validation
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: AUTHENTICATION
+## 🔄 PROCESS FLOW: AUTHENTICATION
 
 ### User Registration Flow
 
 ```
-User nhập form
+User fills in form
   → AuthModal validates input
   → authService.handleAuth(isSignup=true)
-  → authAPI.register() gọi POST /auth/register
-  → Nhận response {user, access_token, refresh_token}
-  → appState.setAccessToken() lưu token
-  → appState.setUserInfo() lưu user info
+  → authAPI.register() calls POST /auth/register
+  → Receive response {user, access_token, refresh_token}
+  → appState.setAccessToken() saves token
+  → appState.setUserInfo() saves user info
   → appState.set('isAuthentication', 'true')
-  → UserMenu.updateUI(user) cập nhật giao diện
-  → AuthModal.hide() đóng modal
-  → libraryContent.render() load dữ liệu user
-  → showToast('Đăng nhập thành công')
+  → UserMenu.updateUI(user) updates interface
+  → AuthModal.hide() closes modal
+  → libraryContent.render() loads user data
+  → showToast('Login successful')
 ```
 
 ### User Login Flow
 
 ```
-User nhập email/password
+User enters email/password
   → AuthModal validates
   → authService.handleAuth(isSignup=false)
-  → authAPI.login() gọi POST /auth/login
-  → Lưu tokens vào LocalStorage
-  → Update UI (ẩn nút Login/Signup, hiện Avatar)
+  → authAPI.login() calls POST /auth/login
+  → Save tokens to LocalStorage
+  → Update UI (hide Login/Signup buttons, show Avatar)
   → Load user's playlists & followed artists
 ```
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: PHÁT NHẠC
+## 🔄 PROCESS FLOW: MUSIC PLAYBACK
 
 ### Play Track from Playlist
 
 ```
-User click vào track
-  → Lấy data-index-song từ track-item
-  → Lấy currentTracks từ appState
+User clicks on track
+  → Get data-index-song from track-item
+  → Get currentTracks from appState
   → player.loadNewPlaylist(tracks, artistId)
   → player.currentIndex = clickedIndex
   → player.loadCurrentSong()
@@ -174,65 +174,65 @@ User click vào track
       → Update player UI (title, artist, image)
       → Update document.title
   → player.safePlay()
-      → Xử lý interruption (pause cũ → delay 10ms → play mới)
+      → Handle interruption (pause old → delay 10ms → play new)
   → appState.setCurrentIndex(index)
   → appState.setCurrentTracks(tracks)
-  → Re-render track list với highlight playing track
+  → Re-render track list with highlighted playing track
   → Update large play button icon
 ```
 
 ### Play/Pause Toggle
 
 ```
-User click Play Button
+User clicks Play Button
   → Check audio.paused
-  → Nếu paused:
+  → If paused:
       → player.safePlay()
-      → Icon đổi từ fa-play → fa-pause
-  → Nếu playing:
+      → Icon changes from fa-play → fa-pause
+  → If playing:
       → player.safePause()
-      → Icon đổi từ fa-pause → fa-play
-  → Sync với large play button trong hero section
+      → Icon changes from fa-pause → fa-play
+  → Sync with large play button in hero section
 ```
 
 ### Next/Previous Track
 
 ```
-User click Next/Previous
-  → player.changeIndexSong(+1 hoặc -1)
+User clicks Next/Previous
+  → player.changeIndexSong(+1 or -1)
   → Check shuffle mode:
-      → Nếu shuffle: getRandomSong()
-      → Nếu không: tính index theo thứ tự
-  → player.safePause() dừng bài cũ
+      → If shuffle: getRandomSong()
+      → If not: calculate index in order
+  → player.safePause() stops old track
   → Update currentIndex
-  → player.loadCurrentSong() load bài mới
-  → player.safePlay() phát bài mới
+  → player.loadCurrentSong() loads new track
+  → player.safePlay() plays new track
   → Trigger onTrackChange callback
       → Re-render track list
-      → Highlight bài đang phát
+      → Highlight currently playing track
 ```
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: PLAYLIST MANAGEMENT
+## 🔄 PROCESS FLOW: PLAYLIST MANAGEMENT
 
 ### Create New Playlist
 
 ```
-User click "Create" button
-  → requireAuth() kiểm tra đăng nhập
-  → Nếu chưa login: show AuthModal
-  → Nếu đã login:
+User clicks "Create" button
+  → requireAuth() checks login status
+  → If not logged in: show AuthModal
+  → If logged in:
       → Set isCreatingPlaylist = true
       → Disable create button
       → playlistService.create()
-          → playlistAPI.create() gọi POST /playlists
+          → playlistAPI.create() calls POST /playlists
           → Body: {name, description, is_public, image_url}
-          → Nhận response playlist
+          → Receive playlist response
       → showUICreatePlaylist(true)
-          → Ẩn hits/artists section
-          → Hiện create-playlist section
-      → Populate form với playlist data
+          → Hide hits/artists section
+          → Show create-playlist section
+      → Populate form with playlist data
       → Hide create button
       → libraryContent.render() refresh library
       → showToast('Playlist created')
@@ -241,22 +241,22 @@ User click "Create" button
 ### Edit Playlist
 
 ```
-User click vào playlist title/cover
-  → Get playlist data từ DOM
+User clicks on playlist title/cover
+  → Get playlist data from DOM
   → playlistModal.open(playlist)
       → Populate form fields
       → Show modal overlay
-  → User chỉnh sửa thông tin
-  → User click Save button
+  → User edits information
+  → User clicks Save button
       → playlistModal.handleSave()
-      → Thu thập data từ form
-      → Nếu có upload ảnh:
+      → Collect data from form
+      → If image uploaded:
           → playlistService.uploadCover(id, file)
           → POST /upload/playlist/:id/cover
-          → Nhận URL ảnh mới
+          → Receive new image URL
       → playlistService.update(id, data)
-          → PUT /playlists/:id với {name, description, image_url}
-      → playlistService.getById(id) lấy data mới nhất
+          → PUT /playlists/:id with {name, description, image_url}
+      → playlistService.getById(id) fetch latest data
       → Update UI (title, cover image)
       → playlistModal.close()
       → Trigger onSaveCallback
@@ -267,66 +267,66 @@ User click vào playlist title/cover
 ### Delete Playlist
 
 ```
-User right-click vào playlist
-  → contextMenu.show() hiện menu
-  → User click "Delete"
+User right-clicks on playlist
+  → contextMenu.show() displays menu
+  → User clicks "Delete"
   → contextMenu.handleAction('delete')
       → playlistService.delete(id)
           → DELETE /playlists/:id
       → libraryContent.render() refresh library
-      → resetToHome() quay về trang chủ
+      → resetToHome() return to home page
       → contextMenu.hide()
       → showToast('Playlist deleted')
 ```
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: FOLLOW/UNFOLLOW
+## 🔄 PROCESS FLOW: FOLLOW/UNFOLLOW
 
 ### Follow Playlist
 
 ```
-User click "Follow" button trong hero
-  → requireAuth() check authentication
-  → Get playlistId từ hero-content data-id
+User clicks "Follow" button in hero
+  → requireAuth() checks authentication
+  → Get playlistId from hero-content data-id
   → Check current state: data-following
-  → Nếu chưa follow:
+  → If not following:
       → playlistService.follow(id)
           → POST /playlists/:id/follow
       → Update button: text="Following", data-following="true"
       → showToast('Following playlist')
-  → Nếu đã follow:
+  → If already following:
       → playlistService.unfollow(id)
           → DELETE /playlists/:id/follow
       → Update button: text="Follow", data-following="false"
       → showToast('Unfollowed playlist')
   → libraryContent.render() refresh library
-      → Playlist xuất hiện/biến mất khỏi library
+      → Playlist appears/disappears from library
 ```
 
 ### Follow Artist
 
 ```
-User click "Follow" trên artist hero
-  → Tương tự flow Follow Playlist
-  → artistService.follow(id) hoặc unfollow(id)
+User clicks "Follow" on artist hero
+  → Similar flow to Follow Playlist
+  → artistService.follow(id) or unfollow(id)
   → API: POST/DELETE /artists/:id/follow
   → Update library content
 ```
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: SEARCH & FILTER
+## 🔄 PROCESS FLOW: SEARCH & FILTER
 
 ### Search in Main Content
 
 ```
-User gõ vào search input (header)
-  → Event 'input' trigger
+User types in search input (header)
+  → Event 'input' triggers
   → Get searchValue.toLowerCase().trim()
-  → Nếu searchValue rỗng:
-      → initHomePage() hiện lại tất cả
-  → Nếu có searchValue:
+  → If searchValue is empty:
+      → initHomePage() shows everything
+  → If searchValue exists:
       → Promise.all([
           playlistAPI.getAll(),
           artistAPI.getAll()
@@ -335,22 +335,22 @@ User gõ vào search input (header)
       → Filter artists: name.includes(searchValue)
       → playlistGrid.render(filteredPlaylists)
       → artistGrid.render(filteredArtists)
-      → attachCardEvents() cho kết quả search
+      → attachCardEvents() for search results
 ```
 
 ### Search in Library
 
 ```
-User click search icon trong sidebar
+User clicks search icon in sidebar
   → searchLibraryInput.classList.add('show')
-  → Input appear với animation
-  → User gõ search term
-  → debounce(800ms) trigger
+  → Input appears with animation
+  → User types search term
+  → debounce(800ms) triggers
       → librarySearch.handleSearch()
       → Get searchValue
       → libraryContent.render(filterType, searchValue, sortType)
           → playlistService.getAllCombined()
-          → Filter theo searchValue
+          → Filter by searchValue
           → Apply sort
           → Render filtered results
       → attachLibraryEvents()
@@ -359,29 +359,29 @@ User click search icon trong sidebar
 ### Filter Library (Playlist/Artist tabs)
 
 ```
-User click "Playlists" tab
-  → Remove active từ Artists tab
-  → Add active vào Playlists tab
+User clicks "Playlists" tab
+  → Remove active from Artists tab
+  → Add active to Playlists tab
   → appState.setFilterType('playlist')
   → libraryContent.render('playlist', searchValue, sortType)
-      → Chỉ render playlists
+      → Only render playlists
   → attachLibraryEvents()
 
-User click "Artists" tab
-  → Tương tự nhưng filterType='artist'
-  → Chỉ render artists
+User clicks "Artists" tab
+  → Similar but filterType='artist'
+  → Only render artists
 ```
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: SORT & VIEW MODE
+## 🔄 PROCESS FLOW: SORT & VIEW MODE
 
 ### Change Sort Order
 
 ```
-User click Sort button
+User clicks Sort button
   → sortByTable.classList.toggle('show')
-  → User chọn sort option (Recents, Alphabetical, etc.)
+  → User selects sort option (Recents, Alphabetical, etc.)
   → sortMenu.handleSortChange(sortType)
       → appState.setSortType(sortType)
       → sortMenu.updateButtonText(sortType)
@@ -399,46 +399,46 @@ User click Sort button
 ### Change View Mode
 
 ```
-User click view mode button (compact-list, grid, etc.)
+User clicks view mode button (compact-list, grid, etc.)
   → sortMenu.handleViewChange(viewMode)
   → appState.set('viewMode', viewMode)
   → Update sort button icon (fa-list, fa-th, etc.)
-  → Remove tất cả view classes cũ
-  → Add view class mới vào:
+  → Remove all old view classes
+  → Add new view class to:
       - .library-content
       - .library-item
       - .item-image
       - .item-info
-  → CSS tự động adjust layout theo class
+  → CSS automatically adjusts layout by class
   → Hide view menu
 ```
 
 ---
 
-## 🔄 LUỒNG XỬ LÝ: LIKE/UNLIKE TRACK
+## 🔄 PROCESS FLOW: LIKE/UNLIKE TRACK
 
 ### Toggle Like Track
 
 ```
-User click vào like icon (💚/🩶)
-  → Event delegation từ popularSection
+User clicks on like icon (💚/🩶)
+  → Event delegation from popularSection
   → e.target.closest('.track-is-liked')
-  → e.stopPropagation() ngăn play track
-  → Get trackId từ track-item
-  → Get isLiked từ icon (💚 = true)
+  → e.stopPropagation() prevents track play
+  → Get trackId from track-item
+  → Get isLiked from icon (💚 = true)
   → trackService.toggleLike(trackId, isLiked)
-      → Nếu isLiked: trackAPI.unlike(id)
+      → If isLiked: trackAPI.unlike(id)
           → DELETE /tracks/:id/like
-      → Nếu chưa like: trackAPI.like(id)
+      → If not liked: trackAPI.like(id)
           → POST /tracks/:id/like
-  → Update track trong currentTracks array
+  → Update track in currentTracks array
       → currentTracks[index].is_liked = !isLiked
       → appState.setCurrentTracks(currentTracks)
   → Re-render track list
       → trackList.render(currentTracks, artistId)
-      → Icon tự động update: 💚 ↔️ 🩶
+      → Icon automatically updates: 💚 ↔️ 🩶
   → attachTrackEvents() re-attach listeners
-  → showToast('Added to Liked Songs' hoặc 'Removed')
+  → showToast('Added to Liked Songs' or 'Removed')
 ```
 
 ---
@@ -471,7 +471,7 @@ User click vào like icon (💚/🩶)
 
 - **Auth**: `/auth/register`, `/auth/login`, `/auth/logout`
 - **Playlists**: CRUD operations, follow/unfollow
-- **Artists**: Get details, popular tracks, follow
+- **Artists**: Get details, popular tracks, follow/unfollow
 - **Tracks**: Like/Unlike functionality
 - **Upload**: Playlist cover images
 
@@ -484,14 +484,14 @@ User click vào like icon (💚/🩶)
 
 ---
 
-## 🎯 NHỮNG ĐIỂM NỔI BẬT
+## 🎯 HIGHLIGHTS
 
 ### Technical Achievements
 
 - ✅ **100% Vanilla JS** - No frameworks (React, Vue)
 - ✅ **Component-based** - Modular architecture
 - ✅ **Service Layer** - Clean separation of concerns
-- ✅ **Responsive** - Mobile-first approach
+- ✅ **Responsive** - Desktop-first approach
 - ✅ **Performance** - Debounce, lazy loading
 
 ### UX Excellence
@@ -504,16 +504,16 @@ User click vào like icon (💚/🩶)
 
 ---
 
-## 🚀 DEMO & KẾT QUẢ
+## 🚀 DEMO & RESULTS
 
-### Chức năng hoạt động
+### Working Features
 
-- ✅ Authentication flow hoàn chỉnh
+- ✅ Complete authentication flow
 - ✅ Browse playlists & artists
 - ✅ Create & manage playlists
-- ✅ Play music với full controls
+- ✅ Play music with full controls
 - ✅ Search & filter library
-- ✅ Responsive trên mọi thiết bị
+- ✅ Responsive on all devices
 
 ### Metrics
 
@@ -523,7 +523,7 @@ User click vào like icon (💚/🩶)
 
 ---
 
-## 📚 BÀI HỌC & KINH NGHIỆM
+## 📚 LESSONS LEARNED
 
 ### Technical Skills
 
@@ -542,7 +542,7 @@ User click vào like icon (💚/🩶)
 
 ---
 
-## 🔮 HƯỚNG PHÁT TRIỂN
+## 🔮 FUTURE DEVELOPMENT
 
 ### Future Enhancements
 
@@ -551,33 +551,31 @@ User click vào like icon (💚/🩶)
 - 🎯 Lyrics display
 - 🎯 Offline mode
 - 🎯 Backend development (Node.js)
-...
+
 ---
 
-## 🙏 KẾT LUẬN
+## 🙏 CONCLUSION
 
-### Tổng kết
+### Summary
 
-- Dự án thành công trong việc replicate Spotify
-- Nắm vững kiến thức Vanilla JavaScript
-- Hiểu rõ về component architecture
-- Kinh nghiệm thực tế với REST API
+- Successfully replicated Spotify functionality
+- Mastered Vanilla JavaScript knowledge
+- Deep understanding of component architecture
+- Practical experience with REST API
 
 ### Credits
 
-- **F8 - Fullstack Program** cho khóa học chất lượng
-- **F8 Spotify API** cho backend support
-- **Developer Community** cho inspiration
+- **F8 - Fullstack Program** for quality course
+- **F8 Spotify API** for backend support
+- **Developer Community** for inspiration
 
 ---
 
 ## ❓ Q&A
 
-**Cảm ơn đã lắng nghe!**
+**Thank you for listening!**
 
 ### 📧 Contact
 
 - **GitHub**: @Quang-Trung-68
 - **Repository**: f8-k15-fullstack-module-2
-
-
