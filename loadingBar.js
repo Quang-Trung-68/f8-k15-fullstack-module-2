@@ -1,11 +1,11 @@
 // loadingBar.js
-export const LoadingBar = {
+const LoadingBar = {
   el: document.getElementById("loading-bar"),
 
   start() {
     if (!this.el) return;
     this.el.style.opacity = "1";
-    this.el.style.width = "30%"; // bắt đầu tăng
+    this.el.style.width = "30%";
     this.timer = setInterval(() => {
       let current = parseFloat(this.el.style.width);
       if (current < 90) {
@@ -24,3 +24,5 @@ export const LoadingBar = {
     }, 500);
   },
 };
+
+export  {LoadingBar};

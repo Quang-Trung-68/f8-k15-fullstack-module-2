@@ -32,7 +32,7 @@ export const PlaylistHero = () => {
         </button>
       `
           : `
-        <button type="button" class="owner-btn">Owner</button>
+        <button type="button" class="owner-btn">Edit</button>
       `
       }
     </div>

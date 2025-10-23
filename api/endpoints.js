@@ -1,5 +1,5 @@
 // ============================================
-// FILE: api/endpoints.js
+// FILE: api/endpoints.js - Fixed
 // ============================================
 
 import api from "../utils/api.js";
@@ -42,9 +42,8 @@ export const playlistAPI = {
       track_id: trackId,
       position: 0,
     }),
-  removeTrack:(trackId, playlistId)=>{
-    api.delete(`playlists/${playlistId}/tracks/${trackId}`)
-  }
+  removeTrack: (trackId, playlistId) =>
+    api.delete(`playlists/${playlistId}/tracks/${trackId}`),
 };
 
 // Artist endpoints

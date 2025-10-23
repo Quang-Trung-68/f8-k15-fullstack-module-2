@@ -1,5 +1,5 @@
 // ============================================
-// FILE: main.js
+// FILE: main.js - Updated
 // ============================================
 
 import { AuthModal } from "./components/auth/AuthModal.js";
@@ -11,6 +11,7 @@ import { PlaylistModal } from "./components/playlist/PlaylistModal.js";
 import { ArtistGrid } from "./components/artist/ArtistGrid.js";
 import { ArtistHero } from "./components/artist/ArtistHero.js";
 import { TrackList } from "./components/track/TrackList.js";
+import { TrackContextMenu } from "./components/track/TrackContextMenu.js";
 import { LibraryContent } from "./components/library/LibraryContent.js";
 import { LibrarySearch } from "./components/library/LibrarySearch.js";
 import { SortMenu } from "./components/library/SortMenu.js";
@@ -88,10 +89,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     sidebar: document.querySelector(".sidebar"),
     closeMenuBtn: document.querySelector(".close-menu-icon"),
 
-    // View mode
-    viewModeButtons: document.querySelectorAll(".view-mode-btn"),
-    viewAsIcon: document.querySelector(".fas-view-as"),
-    sortByMode: document.querySelector(".sort-by-mode"),
+    // Player
+    addBtn: document.querySelector(".add-btn"),
   };
 
   // ============================================
@@ -99,6 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ============================================
   let isCreatingPlaylist = false;
   let eventListenersAdded = false;
+  let currentViewingPlaylistId = null; // Track which playlist we're viewing
 
   // ============================================
   // INITIALIZE COMPONENTS
@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initialize Player
   const player = AudioPlayer(elements);
-  window.player = player; // Expose globally for debugging
+  window.player = player;
 
   // Set callback for when track changes
   player.setTrackChangeCallback((newIndex) => {
@@ -128,6 +128,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const trackList = TrackList();
   const playlistHero = PlaylistHero();
   const artistHero = ArtistHero();
+
+  // Initialize Track Context Menu
+  const trackContextMenu = TrackContextMenu(elements);
+  trackContextMenu.init();
 
   // Initialize Library Components
   const libraryContent = LibraryContent(elements);
@@ -203,6 +207,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       appState.getSortType()
     );
     attachLibraryEvents();
+
+    // Update hero if we're viewing this playlist
+    if (currentViewingPlaylistId === updatedPlaylist.id) {
+      elements.artistHero.innerHTML = playlistHero.render(updatedPlaylist);
+      attachHeroEvents();
+    }
   });
 
   // Initialize Auth Components
@@ -273,19 +283,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     showUICreatePlaylist(false);
     elements.createPlaylistBtn.disabled = false;
     elements.createPlaylistBtn.style.display = "block";
-
-    // Remove active class from all library items
+    currentViewingPlaylistId = null;
     removeAllLibraryActiveClasses();
   };
 
-  // Helper function to remove active class from library items
   const removeAllLibraryActiveClasses = () => {
     document.querySelectorAll(".library-item").forEach((item) => {
       item.classList.remove("active");
     });
   };
 
-  // Helper function to set active library item
   const setActiveLibraryItem = (itemId, itemType) => {
     removeAllLibraryActiveClasses();
     const selector =
@@ -305,6 +312,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const renderPlaylistDetail = async (playlistId) => {
     try {
       const playlist = await playlistService.getById(playlistId);
+      currentViewingPlaylistId = playlistId;
       showUIPopular(true);
 
       elements.artistHero.innerHTML = playlistHero.render(playlist);
@@ -315,7 +323,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       appState.setCurrentTracks(tracks);
       appState.setCurrentArtistId(null);
 
-      // Set active library item
       setActiveLibraryItem(playlistId, "playlist");
 
       attachHeroEvents();
@@ -329,6 +336,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const renderArtistDetail = async (artistId) => {
     try {
       const artist = await artistService.getById(artistId);
+      currentViewingPlaylistId = null;
       showUIPopular(true);
 
       elements.artistHero.innerHTML = artistHero.render(artist);
@@ -339,7 +347,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       appState.setCurrentArtistId(artist.id);
       appState.setCurrentTracks(tracks);
 
-      // Set active library item
       setActiveLibraryItem(artistId, "artist");
 
       attachHeroEvents();
@@ -355,7 +362,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ============================================
 
   const attachLibraryEvents = () => {
-    // Attach context menu to items
     contextMenu.attachToItems();
 
     // Playlist click events
@@ -418,6 +424,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         })
       );
+    }
+
+    // Owner button - open edit modal
+    const ownerBtn = document.querySelector(".owner-btn");
+    if (ownerBtn) {
+      ownerBtn.addEventListener("click", async () => {
+        const heroContent = document.querySelector(".hero-content");
+        const playlistId = heroContent?.dataset.id;
+
+        if (!playlistId) return;
+
+        try {
+          const playlist = await playlistService.getById(playlistId);
+          playlistModal.open(playlist);
+        } catch (error) {
+          console.error("Error opening playlist modal:", error);
+          showToast("Failed to open playlist editor", "error");
+        }
+      });
     }
 
     // Artist follow button
@@ -517,7 +542,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Handle track click to play
       const trackItem = e.target.closest(".track-item");
-      if (trackItem) {
+      if (trackItem && !e.target.closest(".track-menu-btn")) {
         const index = Number(trackItem.dataset.indexSong);
         const artistId = trackItem.dataset.artistId || null;
         const currentTracks = appState.getCurrentTracks();
@@ -537,10 +562,47 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
         attachTrackEvents();
 
-        // Update large play button icon
         updateLargePlayButton();
       }
     });
+
+    // Context menu for tracks (right-click)
+    elements.popularSection.addEventListener(
+      "contextmenu",
+      requireAuth(async (e) => {
+        const trackItem = e.target.closest(".track-item");
+        if (trackItem) {
+          e.preventDefault();
+          const trackId = trackItem.dataset.id;
+          await trackContextMenu.show(
+            e.pageX,
+            e.pageY,
+            trackId,
+            currentViewingPlaylistId
+          );
+        }
+      })
+    );
+
+    // Track menu button (3 dots)
+    elements.popularSection.addEventListener(
+      "click",
+      requireAuth(async (e) => {
+        const menuBtn = e.target.closest(".track-menu-btn");
+        if (menuBtn) {
+          e.stopPropagation();
+          const trackItem = menuBtn.closest(".track-item");
+          const trackId = trackItem.dataset.id;
+          const rect = menuBtn.getBoundingClientRect();
+          await trackContextMenu.show(
+            rect.right,
+            rect.top,
+            trackId,
+            currentViewingPlaylistId
+          );
+        }
+      })
+    );
   };
 
   const attachCardEvents = () => {
@@ -567,7 +629,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
-  // Helper function to update large play button icon
   const updateLargePlayButton = () => {
     const largeBtn = elements.playBtnLarge;
     if (!largeBtn) return;
@@ -703,7 +764,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
     );
 
-    // Open playlist modal
+    // Open playlist modal for created playlist
     elements.playlistTitle?.addEventListener("click", () => {
       const playlist = {
         id: elements.playlistTitle.dataset.id,
@@ -724,7 +785,34 @@ document.addEventListener("DOMContentLoaded", async () => {
       playlistModal.open(playlist);
     });
 
-    //  Large play button with proper state checking
+    // Add button in player - show context menu
+    elements.addBtn?.addEventListener(
+      "click",
+      requireAuth(async (e) => {
+        e.stopPropagation();
+
+        const currentTracks = appState.getCurrentTracks();
+        const currentIndex = appState.getCurrentIndex();
+
+        if (currentTracks.length === 0 || currentIndex < 0) {
+          showToast("No track is currently playing", "error");
+          return;
+        }
+
+        const currentTrack = currentTracks[currentIndex];
+        const trackId = currentTrack.id || currentTrack.track_id;
+
+        const rect = elements.addBtn.getBoundingClientRect();
+        await trackContextMenu.show(
+          rect.left,
+          rect.top - 10,
+          trackId,
+          currentViewingPlaylistId
+        );
+      })
+    );
+
+    // Large play button with proper state checking
     elements.playBtnLarge?.addEventListener("click", async (e) => {
       e.preventDefault();
 
@@ -733,7 +821,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const icon = elements.playBtnLarge.querySelector("i");
 
-      // Check if we're playing the same playlist/artist
       const isSamePlaylist =
         player.songs.length > 0 &&
         player.audio.src !== "" &&
@@ -741,7 +828,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           JSON.stringify(player.songs.map((s) => s.id));
 
       if (!isSamePlaylist) {
-        // Load new playlist
         await player.loadNewPlaylist(
           currentTracks,
           appState.getCurrentArtistId()
@@ -750,7 +836,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         appState.setCurrentIndex(0);
         player.loadCurrentSong();
 
-        // Change icon to pause
         icon.classList.remove("fa-play");
         icon.classList.add("fa-pause");
 
@@ -762,7 +847,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
         attachTrackEvents();
       } else {
-        // Toggle play/pause for same playlist
         if (player.audio.paused) {
           await player.safePlay();
           icon.classList.remove("fa-play");
