@@ -796,6 +796,7 @@
   overflow: hidden;
   cursor: pointer;
   transition: transform var(--transition-fast);
+  display: none;
 }
 
 .user-avatar:hover {
