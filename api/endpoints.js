@@ -15,7 +15,7 @@ export const authAPI = {
 
 // Playlist endpoints
 export const playlistAPI = {
-  getAll: (limit = 40, offset = 0) =>
+  getAll: (limit = 10, offset = 0) =>
     api.get(`playlists?limit=${limit}&offset=${offset}`),
   getById: (id) => api.get(`playlists/${id}`),
   getMy: () => api.get("me/playlists"),
@@ -48,7 +48,7 @@ export const playlistAPI = {
 
 // Artist endpoints
 export const artistAPI = {
-  getAll: (limit = 40, offset = 0) =>
+  getAll: (limit = 10, offset = 0) =>
     api.get(`artists?limit=${limit}&offset=${offset}`),
   getById: (id) => api.get(`artists/${id}`),
   getFollowed: () => api.get("me/following?limit=20&offset=0"),

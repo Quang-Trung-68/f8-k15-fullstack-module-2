@@ -122,6 +122,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Hàm cập nhật UI dựa vào auth status
+  const updatePlayerUIBasedOnAuth = () => {
+    const isAuth = appState.isAuthenticated();
+
+    // Ẩn/hiện add button trong player
+    if (elements.addBtn) {
+      elements.addBtn.style.display = isAuth ? "flex" : "none";
+    }
+
+    // Nếu chưa auth, ẩn like buttons và track menu buttons
+    if (!isAuth) {
+      // Thêm style để ẩn các nút
+      const style = document.createElement("style");
+      style.id = "no-auth-style";
+      style.textContent = `
+      .track-is-liked {
+        display: none !important;
+      }
+      .track-menu-btn {
+        display: none !important;
+      }
+    `;
+
+      // Xóa style cũ nếu có
+      const oldStyle = document.getElementById("no-auth-style");
+      if (oldStyle) {
+        oldStyle.remove();
+      }
+
+      document.head.appendChild(style);
+    } else {
+      // Xóa style khi đã auth
+      const oldStyle = document.getElementById("no-auth-style");
+      if (oldStyle) {
+        oldStyle.remove();
+      }
+    }
+  };
+
   // Initialize Grid Components
   const playlistGrid = PlaylistGrid();
   const artistGrid = ArtistGrid();
@@ -229,11 +268,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
     attachLibraryEvents();
     await initHomePage();
+    updatePlayerUIBasedOnAuth();
   });
 
   const userMenu = UserMenu(elements, async () => {
     elements.libraryContent.innerHTML = "";
     await initHomePage();
+    updatePlayerUIBasedOnAuth();
   });
 
   // Initialize all components
@@ -521,6 +562,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
     elements.popularSection = newPopularSection;
 
+    updatePlayerUIBasedOnAuth();
+
     // CLICK VÀO TRACK ĐỂ PLAY - KHÔNG CẦN AUTH
     elements.popularSection.addEventListener("click", async (e) => {
       // Handle like/unlike - REQUIRE AUTH
@@ -610,43 +653,55 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Context menu - REQUIRE AUTH
-    elements.popularSection.addEventListener(
-      "contextmenu",
-      requireAuth(async (e) => {
-        const trackItem = e.target.closest(".track-item");
-        if (trackItem) {
-          e.preventDefault();
-          const trackId = trackItem.dataset.id;
-          await trackContextMenu.show(
-            e.pageX,
-            e.pageY,
-            trackId,
-            currentViewingPlaylistId
-          );
-        }
-      })
-    );
+    // Context menu - CHỈ YÊU CẦU AUTH KHI THỰC SỰ CLICK VÀO MENU
+    elements.popularSection.addEventListener("contextmenu", async (e) => {
+      const trackItem = e.target.closest(".track-item");
+      if (trackItem) {
+        e.preventDefault();
 
-    // Track menu button - REQUIRE AUTH
-    elements.popularSection.addEventListener(
-      "click",
-      requireAuth(async (e) => {
-        const menuBtn = e.target.closest(".track-menu-btn");
-        if (menuBtn) {
-          e.stopPropagation();
-          const trackItem = menuBtn.closest(".track-item");
-          const trackId = trackItem.dataset.id;
-          const rect = menuBtn.getBoundingClientRect();
-          await trackContextMenu.show(
-            rect.right,
-            rect.top,
-            trackId,
-            currentViewingPlaylistId
-          );
+        // CHỈ KIỂM TRA AUTH KHI USER MUỐN MỞ MENU
+        if (!appState.isAuthenticated()) {
+          authModal.showLogin();
+          authModal.show();
+          showToast("Please login to add songs to playlist", "error");
+          return;
         }
-      })
-    );
+
+        const trackId = trackItem.dataset.id;
+        await trackContextMenu.show(
+          e.pageX,
+          e.pageY,
+          trackId,
+          currentViewingPlaylistId
+        );
+      }
+    });
+
+    // Track menu button - CHỈ YÊU CẦU AUTH KHI CLICK
+    elements.popularSection.addEventListener("click", async (e) => {
+      const menuBtn = e.target.closest(".track-menu-btn");
+      if (menuBtn) {
+        e.stopPropagation();
+
+        // CHỈ KIỂM TRA AUTH KHI USER CLICK VÀO NÚT MENU
+        if (!appState.isAuthenticated()) {
+          authModal.showLogin();
+          authModal.show();
+          showToast("Please login to add songs to playlist", "error");
+          return;
+        }
+
+        const trackItem = menuBtn.closest(".track-item");
+        const trackId = trackItem.dataset.id;
+        const rect = menuBtn.getBoundingClientRect();
+        await trackContextMenu.show(
+          rect.right,
+          rect.top,
+          trackId,
+          currentViewingPlaylistId
+        );
+      }
+    });
   };
 
   const updateTrackPlayIcon = (trackItem) => {
@@ -854,27 +909,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
     );
 
-    // Add button - REQUIRE AUTH
-    elements.addBtn?.addEventListener(
-      "click",
-      requireAuth(async (e) => {
-        e.stopPropagation();
+    // Add button - CHỈ YÊU CẦU AUTH KHI CLICK
+    elements.addBtn?.addEventListener("click", async (e) => {
+      e.stopPropagation();
 
-        const currentTracks = appState.getCurrentTracks();
-        const currentIndex = appState.getCurrentIndex();
+      // KIỂM TRA AUTH KHI CLICK
+      if (!appState.isAuthenticated()) {
+        authModal.showLogin();
+        authModal.show();
+        showToast("Please login to add songs to playlist", "error");
+        return;
+      }
 
-        if (currentTracks.length === 0 || currentIndex < 0) {
-          showToast("No track is currently playing", "error");
-          return;
-        }
+      const currentTracks = appState.getCurrentTracks();
+      const currentIndex = appState.getCurrentIndex();
 
-        const currentTrack = currentTracks[currentIndex];
-        const trackId = currentTrack.id || currentTrack.track_id;
+      if (currentTracks.length === 0 || currentIndex < 0) {
+        showToast("No track is currently playing", "error");
+        return;
+      }
 
-        const rect = elements.addBtn.getBoundingClientRect();
-        await trackContextMenu.show(rect.left, rect.top - 10, trackId, null);
-      })
-    );
+      const currentTrack = currentTracks[currentIndex];
+      const trackId = currentTrack.id || currentTrack.track_id;
+
+      const rect = elements.addBtn.getBoundingClientRect();
+      await trackContextMenu.show(rect.left, rect.top - 10, trackId, null);
+    });
 
     // Large play button - KHÔNG CẦN AUTH
     elements.playBtnLarge?.addEventListener("click", async (e) => {
@@ -973,6 +1033,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       setupEventListeners();
+      updatePlayerUIBasedOnAuth();
     } catch (error) {
       console.error("Init error:", error);
       showToast("Failed to initialize app", "error");
