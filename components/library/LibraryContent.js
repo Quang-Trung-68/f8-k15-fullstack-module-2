@@ -1,9 +1,10 @@
 // ============================================
-// FILE: components/library/LibraryContent.js
+// FILE: components/library/LibraryContent.js - UPDATED
 // ============================================
 
 import { playlistService } from "../../services/playlistService.js";
 import { DEFAULT_IMAGE } from "../../utils/constants.js";
+import { appState } from "../../state/appState.js";
 
 export const LibraryContent = (elements) => {
   const renderPlaylists = (playlists) =>
@@ -45,6 +46,19 @@ export const LibraryContent = (elements) => {
       .join("");
 
   const render = async (filterType, searchField = null, sortType = null) => {
+    // KIỂM TRA AUTH - NẾU CHƯA LOGIN THÌ HIỂN THỊ MESSAGE
+    if (!appState.isAuthenticated()) {
+      elements.libraryContent.innerHTML = `
+        <div style="padding: 24px; text-align: center; color: #b3b3b3;">
+          <i class="fas fa-music" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff;">Login or Signup to enjoy your songs</p>
+          <p style="font-size: 14px;">Create playlists and follow your favorite artists</p>
+        </div>
+      `;
+      return;
+    }
+
+    // NẾU ĐÃ LOGIN THÌ HIỂN THỊ PLAYLISTS/ARTISTS
     const { playlists, artists } = await playlistService.getAllCombined(
       filterType,
       searchField,
@@ -56,9 +70,11 @@ export const LibraryContent = (elements) => {
 
     elements.libraryContent.innerHTML =
       filterType === "playlist"
-        ? playlistHtml
+        ? playlistHtml ||
+          '<div style="padding: 24px; text-align: center; color: #b3b3b3;">No playlists found</div>'
         : filterType === "artist"
-        ? artistHtml
+        ? artistHtml ||
+          '<div style="padding: 24px; text-align: center; color: #b3b3b3;">No artists found</div>'
         : playlistHtml + artistHtml;
   };
 

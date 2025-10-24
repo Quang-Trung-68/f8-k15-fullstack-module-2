@@ -582,6 +582,11 @@
   color: white;
 }
 
+.owner-btn:hover {
+  background-color: #1ed760;
+  cursor: pointer;
+}
+
 /* create my playlist */
 
 .create-btn:disabled {

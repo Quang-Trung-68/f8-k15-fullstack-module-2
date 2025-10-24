@@ -255,8 +255,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         e?.stopPropagation?.();
         authModal.showLogin();
         authModal.show();
+        showToast("Please login to use this feature", "error");
         return;
       }
+      await callback(e);
+    };
+  };
+
+  // Thêm hàm mới để cho phép view mà không cần auth
+  const allowViewWithoutAuth = (callback) => {
+    return async (e) => {
       await callback(e);
     };
   };
@@ -368,20 +376,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   const attachLibraryEvents = () => {
     contextMenu.attachToItems();
 
-    // Playlist click events
+    // Playlist click events - CHO PHÉP VIEW KHÔNG CẦN AUTH
     document.querySelectorAll(".library-item-playlist").forEach((item) => {
-      item.addEventListener("click", async () => {
-        const playlistId = item.dataset.id;
-        await renderPlaylistDetail(playlistId);
-      });
+      item.addEventListener(
+        "click",
+        allowViewWithoutAuth(async () => {
+          const playlistId = item.dataset.id;
+          await renderPlaylistDetail(playlistId);
+        })
+      );
     });
 
-    // Artist click events
+    // Artist click events - CHO PHÉP VIEW KHÔNG CẦN AUTH
     document.querySelectorAll(".library-item-artist").forEach((item) => {
-      item.addEventListener("click", async () => {
-        const artistId = item.dataset.id;
-        await renderArtistDetail(artistId);
-      });
+      item.addEventListener(
+        "click",
+        allowViewWithoutAuth(async () => {
+          const artistId = item.dataset.id;
+          await renderArtistDetail(artistId);
+        })
+      );
     });
   };
 
@@ -430,23 +444,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
     }
 
-    // Owner button - open edit modal
+    // Owner button - REQUIRE AUTH
     const ownerBtn = document.querySelector(".owner-btn");
     if (ownerBtn) {
-      ownerBtn.addEventListener("click", async () => {
-        const heroContent = document.querySelector(".hero-content");
-        const playlistId = heroContent?.dataset.id;
+      ownerBtn.addEventListener(
+        "click",
+        requireAuth(async () => {
+          const heroContent = document.querySelector(".hero-content");
+          const playlistId = heroContent?.dataset.id;
 
-        if (!playlistId) return;
+          if (!playlistId) return;
 
-        try {
-          const playlist = await playlistService.getById(playlistId);
-          playlistModal.open(playlist);
-        } catch (error) {
-          console.error("Error opening playlist modal:", error);
-          showToast("Failed to open playlist editor", "error");
-        }
-      });
+          try {
+            const playlist = await playlistService.getById(playlistId);
+            playlistModal.open(playlist);
+          } catch (error) {
+            console.error("Error opening playlist modal:", error);
+            showToast("Failed to open playlist editor", "error");
+          }
+        })
+      );
     }
 
     // Artist follow button
@@ -504,11 +521,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
     elements.popularSection = newPopularSection;
 
+    // CLICK VÀO TRACK ĐỂ PLAY - KHÔNG CẦN AUTH
     elements.popularSection.addEventListener("click", async (e) => {
-      // Handle like/unlike
+      // Handle like/unlike - REQUIRE AUTH
       const likeBtn = e.target.closest(".track-is-liked");
       if (likeBtn) {
         e.stopPropagation();
+
+        if (!appState.isAuthenticated()) {
+          authModal.showLogin();
+          authModal.show();
+          showToast("Please login to like songs", "error");
+          return;
+        }
 
         const trackItem = likeBtn.closest(".track-item");
         const trackId = trackItem.dataset.id;
@@ -544,7 +569,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Handle track click to play - SỬA LẠI ĐỂ TOGGLE PLAY/PAUSE
+      // Handle track click to play - KHÔNG CẦN AUTH
       const trackItem = e.target.closest(".track-item");
       if (trackItem && !e.target.closest(".track-menu-btn")) {
         const clickedIndex = Number(trackItem.dataset.indexSong);
@@ -554,24 +579,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (currentTracks.length === 0) return;
 
-        // Kiểm tra nếu click vào track đang play
         const isPlayingTrack = trackItem.classList.contains("playing");
 
         if (isPlayingTrack && clickedIndex === currentIndex) {
-          // Toggle play/pause thay vì phát lại từ đầu
           if (player.audio.paused) {
             await player.safePlay();
           } else {
             player.safePause();
           }
 
-          // Update icon trong track item
           updateTrackPlayIcon(trackItem);
           updateLargePlayButton();
           return;
         }
 
-        // Nếu click vào track khác, load và play track mới
         await player.loadNewPlaylist(currentTracks, artistId);
         player.currentIndex = clickedIndex;
         appState.setCurrentIndex(clickedIndex);
@@ -589,7 +610,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Context menu for tracks (right-click)
+    // Context menu - REQUIRE AUTH
     elements.popularSection.addEventListener(
       "contextmenu",
       requireAuth(async (e) => {
@@ -607,7 +628,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
     );
 
-    // Track menu button (3 dots)
+    // Track menu button - REQUIRE AUTH
     elements.popularSection.addEventListener(
       "click",
       requireAuth(async (e) => {
@@ -642,22 +663,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   const attachCardEvents = () => {
-    // Playlist cards
+    // Playlist cards - CHO PHÉP VIEW KHÔNG CẦN AUTH
     document.querySelectorAll(".hit-card").forEach((card) => {
       card.addEventListener(
         "click",
-        requireAuth(async () => {
+        allowViewWithoutAuth(async () => {
           const playlistId = card.dataset.id;
           await renderPlaylistDetail(playlistId);
         })
       );
     });
 
-    // Artist cards
+    // Artist cards - CHO PHÉP VIEW KHÔNG CẦN AUTH
     document.querySelectorAll(".artist-card").forEach((card) => {
       card.addEventListener(
         "click",
-        requireAuth(async () => {
+        allowViewWithoutAuth(async () => {
           const artistId = card.dataset.id;
           await renderArtistDetail(artistId);
         })
@@ -707,24 +728,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
-    // Library tabs
-    elements.navTabPlaylists?.addEventListener("click", async () => {
-      elements.navTabArtists.classList.remove("active");
-      elements.navTabPlaylists.classList.add("active");
-      appState.setFilterType("playlist");
-      await libraryContent.render("playlist", null, appState.getSortType());
-      attachLibraryEvents();
-    });
+    // Library tabs - REQUIRE AUTH
+    elements.navTabPlaylists?.addEventListener(
+      "click",
+      requireAuth(async () => {
+        elements.navTabArtists.classList.remove("active");
+        elements.navTabPlaylists.classList.add("active");
+        appState.setFilterType("playlist");
+        await libraryContent.render("playlist", null, appState.getSortType());
+        attachLibraryEvents();
+      })
+    );
 
-    elements.navTabArtists?.addEventListener("click", async () => {
-      elements.navTabPlaylists.classList.remove("active");
-      elements.navTabArtists.classList.add("active");
-      appState.setFilterType("artist");
-      await libraryContent.render("artist", null, appState.getSortType());
-      attachLibraryEvents();
-    });
+    elements.navTabArtists?.addEventListener(
+      "click",
+      requireAuth(async () => {
+        elements.navTabPlaylists.classList.remove("active");
+        elements.navTabArtists.classList.add("active");
+        appState.setFilterType("artist");
+        await libraryContent.render("artist", null, appState.getSortType());
+        attachLibraryEvents();
+      })
+    );
 
-    // Search in main content
+    // Search in main content - KHÔNG CẦN AUTH
     elements.searchInput?.addEventListener("input", async (e) => {
       const searchValue = e.target.value.toLowerCase().trim();
 
@@ -759,7 +786,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Create playlist
+    // Create playlist - REQUIRE AUTH
     elements.createPlaylistBtn?.addEventListener(
       "click",
       requireAuth(async () => {
@@ -800,28 +827,34 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
     );
 
-    // Open playlist modal for created playlist
-    elements.playlistTitle?.addEventListener("click", () => {
-      const playlist = {
-        id: elements.playlistTitle.dataset.id,
-        name: elements.playlistName.value,
-        description: elements.playlistDesc.value,
-        image_url: elements.coverPreviewImage.src,
-      };
-      playlistModal.open(playlist);
-    });
+    // Open playlist modal - REQUIRE AUTH
+    elements.playlistTitle?.addEventListener(
+      "click",
+      requireAuth(() => {
+        const playlist = {
+          id: elements.playlistTitle.dataset.id,
+          name: elements.playlistName.value,
+          description: elements.playlistDesc.value,
+          image_url: elements.coverPreviewImage.src,
+        };
+        playlistModal.open(playlist);
+      })
+    );
 
-    elements.playlistCoverImage?.addEventListener("click", () => {
-      const playlist = {
-        id: elements.playlistTitle.dataset.id,
-        name: elements.playlistName.value,
-        description: elements.playlistDesc.value,
-        image_url: elements.coverPreviewImage.src,
-      };
-      playlistModal.open(playlist);
-    });
+    elements.playlistCoverImage?.addEventListener(
+      "click",
+      requireAuth(() => {
+        const playlist = {
+          id: elements.playlistTitle.dataset.id,
+          name: elements.playlistName.value,
+          description: elements.playlistDesc.value,
+          image_url: elements.coverPreviewImage.src,
+        };
+        playlistModal.open(playlist);
+      })
+    );
 
-    // Add button in player - show context menu
+    // Add button - REQUIRE AUTH
     elements.addBtn?.addEventListener(
       "click",
       requireAuth(async (e) => {
@@ -839,19 +872,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         const trackId = currentTrack.id || currentTrack.track_id;
 
         const rect = elements.addBtn.getBoundingClientRect();
-
-        // Truyền thêm currentTracks để check duplicate
-        await trackContextMenu.show(
-          rect.left,
-          rect.top - 10,
-          trackId,
-          null, // không truyền currentPlaylistId
-          currentTracks // truyền thêm tracks hiện tại
-        );
+        await trackContextMenu.show(rect.left, rect.top - 10, trackId, null);
       })
     );
 
-    // Large play button with proper state checking
+    // Large play button - KHÔNG CẦN AUTH
     elements.playBtnLarge?.addEventListener("click", async (e) => {
       e.preventDefault();
 
@@ -921,6 +946,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       attachCardEvents();
 
+      // HIỂN THỊ LIBRARY CONTENT DỰA VÀO AUTH STATUS
       if (appState.isAuthenticated()) {
         const filterType = appState.getFilterType();
         const sortType = appState.getSortType();
@@ -935,6 +961,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         await libraryContent.render(filterType, null, sortType);
         attachLibraryEvents();
+      } else {
+        // NẾU CHƯA LOGIN - HIỂN THỊ MESSAGE
+        elements.libraryContent.innerHTML = `
+        <div style="padding: 24px; text-align: center; color: #b3b3b3;">
+          <i class="fas fa-music" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff;">Login or Signup to enjoy your songs</p>
+          <p style="font-size: 14px;">Create playlists and follow your favorite artists</p>
+        </div>
+      `;
       }
 
       setupEventListeners();

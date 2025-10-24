@@ -36,6 +36,16 @@ export const UserMenu = (elements, onLogout) => {
     await authService.logout();
     updateUI(null);
     hide();
+
+    // HIỂN THỊ MESSAGE TRONG LIBRARY CONTENT KHI LOGOUT
+    elements.libraryContent.innerHTML = `
+      <div style="padding: 24px; text-align: center; color: #b3b3b3;">
+        <i class="fas fa-music" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+        <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff;">Login or Signup to enjoy your songs</p>
+        <p style="font-size: 14px;">Create playlists and follow your favorite artists</p>
+      </div>
+    `;
+
     if (onLogout) await onLogout();
   };
 
