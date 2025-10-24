@@ -50,6 +50,30 @@ export const AuthModal = (elements, onAuthSuccess) => {
   };
 
   const init = () => {
+    // Clear general error when user starts typing
+    const clearGeneralErrorOnInput = (formId) => {
+      const form = document.getElementById(formId);
+      if (!form) return;
+
+      form.addEventListener("input", (e) => {
+        if (e.target.classList.contains("form-input")) {
+          const generalError = form.querySelector(".form-error-general");
+          if (generalError) {
+            generalError.classList.remove("show");
+            generalError.style.display = "none";
+          }
+
+          // Also clear field-specific error
+          const formGroup = e.target.closest(".form-group");
+          if (formGroup) {
+            formGroup.classList.remove("invalid");
+          }
+        }
+      });
+    };
+
+    clearGeneralErrorOnInput("signupForm");
+    clearGeneralErrorOnInput("loginForm");
     elements.signupBtn.addEventListener("click", () => {
       showSignup();
       show();

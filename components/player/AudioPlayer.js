@@ -174,7 +174,7 @@ export const AudioPlayer = (elements) => {
         this.onTrackChange(this.currentIndex);
       }
 
-      // NEW: Update back button when track changes
+      // Update back button when track changes
       if (window.updateBackButton) {
         window.updateBackButton();
       }

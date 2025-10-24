@@ -1,5 +1,5 @@
 // ============================================
-// FILE: components/library/LibraryContent.js - UPDATED
+// FILE: components/library/LibraryContent.js
 // ============================================
 
 import { playlistService } from "../../services/playlistService.js";

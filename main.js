@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   // ============================================
-  // NEW: Update back button visibility
+  // Update back button visibility
   // ============================================
   const updateBackButton = () => {
     if (!elements.backBtn) return;
@@ -433,7 +433,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     elements.createPlaylistBtn.style.display = "block";
     currentViewingPlaylistId = null;
     removeAllLibraryActiveClasses();
-    updateBackButton(); // NEW
+    updateBackButton();
   };
 
   const removeAllLibraryActiveClasses = () => {
@@ -727,7 +727,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (trackItem && !e.target.closest(".track-menu-btn")) {
         const clickedIndex = Number(trackItem.dataset.indexSong);
         const artistId = trackItem.dataset.artistId || null;
-        const playlistId = trackItem.dataset.playlistId || null; // NEW
+        const playlistId = trackItem.dataset.playlistId || null;
         const currentTracks = appState.getCurrentTracks();
         const currentIndex = appState.getCurrentIndex();
 
@@ -751,7 +751,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         player.currentIndex = clickedIndex;
         appState.setCurrentIndex(clickedIndex);
 
-        // NEW: Save playing source
+        // Save playing source
         if (playlistId) {
           appState.setCurrentPlayingSourceId(playlistId);
           appState.setCurrentPlayingSourceType("playlist");
@@ -970,7 +970,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const setupEventListeners = () => {
     if (eventListenersAdded) return;
 
-    // NEW: Back button handler
+    // Back button handler
     elements.backBtn?.addEventListener("click", async () => {
       const playingSourceId = appState.getCurrentPlayingSourceId();
       const playingSourceType = appState.getCurrentPlayingSourceType();
@@ -1000,7 +1000,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       el?.addEventListener("click", async () => {
         resetToHome();
         await initHomePage();
-        updateBackButton(); // NEW
+        updateBackButton();
       });
     });
 
@@ -1145,7 +1145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         player.currentIndex = 0;
         appState.setCurrentIndex(0);
 
-        // NEW: Save playing source
+        // Save playing source
         if (currentViewingPlaylistId) {
           appState.setCurrentPlayingSourceId(currentViewingPlaylistId);
           appState.setCurrentPlayingSourceType("playlist");
@@ -1167,7 +1167,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           currentViewingPlaylistId
         );
         attachTrackEvents();
-        updateBackButton(); // NEW
+        updateBackButton(); 
       } else {
         if (player.audio.paused) {
           await player.safePlay();
@@ -1232,7 +1232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       setupEventListeners();
       updatePlayerUIBasedOnAuth();
-      updateBackButton(); // NEW
+      updateBackButton(); 
     } catch (error) {
       console.error("Init error:", error);
       showToast("Failed to initialize app", "error");

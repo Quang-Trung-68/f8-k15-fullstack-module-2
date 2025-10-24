@@ -169,7 +169,7 @@
         <header class="main-header">
           <div class="search-container">
             <div class="search-box">
-              <!-- NEW: Back button -->
+              <!-- Back button -->
               <button
                 class="back-btn"
                 title="Back to playlist is playing"
@@ -688,7 +688,7 @@
                 />
                 <div class="error-message">
                   <i class="fas fa-info-circle"></i>
-                  <span class="error-message-username"
+                  <span class="signup-error-message-username"
                     >Please enter a valid user name</span
                   >
                 </div>
@@ -703,7 +703,7 @@
                 />
                 <div class="error-message">
                   <i class="fas fa-info-circle"></i>
-                  <span class="error-message-display-name"
+                  <span class="signup-error-message-display-name"
                     >Please enter a valid display name</span
                   >
                 </div>
@@ -718,7 +718,7 @@
                 />
                 <div class="error-message">
                   <i class="fas fa-info-circle"></i>
-                  <span class="error-message-email"
+                  <span class="signup-error-message-email"
                     >Please enter a valid email address</span
                   >
                 </div>
@@ -733,7 +733,7 @@
                 />
                 <div class="error-message">
                   <i class="fas fa-info-circle"></i>
-                  <span class="error-message-password"
+                  <span class="signup-error-message-password"
                     >Password must be at least 8 characters</span
                   >
                 </div>
@@ -746,7 +746,10 @@
                 Sign Up
               </button>
             </form>
-
+            <div class="form-error-general" style="display: none">
+              <i class="fas fa-exclamation-circle"></i>
+              <span class="form-error-general-message"></span>
+            </div>
             <div class="auth-switch">
               <span>Already have an account? </span>
               <button class="auth-link" id="showLogin">Log in here</button>
@@ -767,7 +770,7 @@
                 />
                 <div class="error-message">
                   <i class="fas fa-info-circle"></i>
-                  <span class="error-message-email"
+                  <span class="login-error-message-email"
                     >Please enter a valid email address</span
                   >
                 </div>
@@ -782,7 +785,7 @@
                 />
                 <div class="error-message">
                   <i class="fas fa-info-circle"></i>
-                  <span class="error-message-email"
+                  <span class="login-error-message-password"
                     >Please enter your password</span
                   >
                 </div>
@@ -795,7 +798,10 @@
                 Log In
               </button>
             </form>
-
+            <div class="form-error-general" style="display: none">
+              <i class="fas fa-exclamation-circle"></i>
+              <span class="form-error-general-message"></span>
+            </div>
             <div class="auth-switch">
               <span>Don't have an account? </span>
               <button class="auth-link" id="showSignup">Sign up here</button>

@@ -31,7 +31,7 @@ export const appState = {
   getCurrentArtistId: () => storage.get("currentArtistId"),
   setCurrentArtistId: (id) => storage.set("currentArtistId", id),
 
-  // NEW: Track playing source (playlist or artist ID)
+  // Track playing source (playlist or artist ID)
   getCurrentPlayingSourceId: () => storage.get("currentPlayingSourceId"),
   setCurrentPlayingSourceId: (id) => storage.set("currentPlayingSourceId", id),
 

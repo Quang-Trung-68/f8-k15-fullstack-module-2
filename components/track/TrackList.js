@@ -1,5 +1,5 @@
 // ============================================
-// FILE: components/track/TrackList.js - UPDATED
+// FILE: components/track/TrackList.js
 // ============================================
 
 import { formatSeconds } from "../../utils/helpers.js";
