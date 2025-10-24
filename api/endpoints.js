@@ -61,14 +61,15 @@ export const artistAPI = {
 export const trackAPI = {
   like: (id) => api.post(`tracks/${id}/like`),
   unlike: (id) => api.delete(`tracks/${id}/like`),
+  getById: (id) => api.get(`tracks/${id}`),
 };
 
 // Search endpoints
 export const searchApi = {
   searchPlaylists: (searchTerm) =>
-    api.get(`search/playlists?q=${searchTerm}&limit=5`),
+    api.get(`search/playlists?q=${searchTerm}&limit=6`),
   searchTracks: (searchTerm) =>
-    api.get(`search/tracks?q=${searchTerm}&limit=5`),
+    api.get(`search/tracks?q=${searchTerm}&limit=6`),
   searchArtists: (searchTerm) =>
-    api.get(`search/artist?q=${searchTerm}&limit=5`),
+    api.get(`search/artist?q=${searchTerm}&limit=6`),
 };
