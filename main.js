@@ -636,7 +636,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     updatePlayerUIBasedOnAuth();
 
-    // CLICK VÀO TRACK ĐỂ PLAY - KHÔNG CẦN AUTH
+    // CLICK VÀO TRACK ĐỂ PLAY
     elements.popularSection.addEventListener("click", async (e) => {
       // Handle like/unlike - REQUIRE AUTH
       const likeBtn = e.target.closest(".track-is-liked");
@@ -684,7 +684,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Handle track click to play - KHÔNG CẦN AUTH
+      // Handle track click to play
       const trackItem = e.target.closest(".track-item");
       if (trackItem && !e.target.closest(".track-menu-btn")) {
         const clickedIndex = Number(trackItem.dataset.indexSong);
@@ -888,9 +888,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         showToast("Playing track", "success");
       } else {
-        // Track không có trong playlist hiện tại
-        // Có thể fetch track từ API và play (nếu có endpoint)
-        showToast("Track not in current playlist", "info");
+        // Track không có trong current playlist
+        // Fetch track từ API
+        const trackData = await trackService.getById(trackId);
+
+        // Tạo array chỉ có 1 track này
+        const singleTrackPlaylist = [trackData];
+
+        // Load như một playlist mới
+        await player.loadNewPlaylist(singleTrackPlaylist, trackData.artist_id);
+        player.currentIndex = 0;
+        appState.setCurrentIndex(0);
+
+        // Clear playing source vì đây là single track
+        appState.setCurrentPlayingSourceId(null);
+        appState.setCurrentPlayingSourceType(null);
+
+        player.loadCurrentSong();
+        await player.safePlay();
+
+        // Update popular section với track mới
+        showUIPopular(true);
+        currentViewingPlaylistId = null;
+
+        elements.popularSection.innerHTML = trackList.render(
+          singleTrackPlaylist,
+          trackData.artist_id,
+          null
+        );
+        attachTrackEvents();
+
+        updateLargePlayButton();
+        updateBackButton();
+
+        showToast("Playing track", "success");
       }
     } catch (error) {
       console.error("Error playing track:", error);
