@@ -1,5 +1,5 @@
 // ============================================
-// FILE: api/endpoints.js - Fixed
+// FILE: api/endpoints.js
 // ============================================
 
 import api from "../utils/api.js";
@@ -61,4 +61,14 @@ export const artistAPI = {
 export const trackAPI = {
   like: (id) => api.post(`tracks/${id}/like`),
   unlike: (id) => api.delete(`tracks/${id}/like`),
+};
+
+// Search endpoints
+export const searchApi = {
+  searchPlaylists: (searchTerm) =>
+    api.get(`search/playlists?q=${searchTerm}&limit=5`),
+  searchTracks: (searchTerm) =>
+    api.get(`search/tracks?q=${searchTerm}&limit=5`),
+  searchArtists: (searchTerm) =>
+    api.get(`search/artist?q=${searchTerm}&limit=5`),
 };
