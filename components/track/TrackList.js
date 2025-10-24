@@ -15,24 +15,36 @@ export const TrackList = () => {
     }
 
     const currentIndex = appState.getCurrentIndex();
+    const isPlaying = window.player && !window.player.audio.paused;
 
     return `
       <h2 class="section-title">Popular</h2>
       <div class="track-list">
         ${tracks
-          .map(
-            (track, index) => `
+          .map((track, index) => {
+            const isCurrentTrack = index === currentIndex;
+
+            return `
           <div 
             title="${track.title || track.track_title}" 
             data-artist-id="${artistId || ""}" 
             data-index-song="${index}" 
             data-id="${track.track_id || track.id}" 
-            class="track-item ${index === currentIndex ? "playing" : ""}"
+            class="track-item ${isCurrentTrack ? "playing" : ""}"
           >
-            <div class="track-number">${index + 1}</div>
+            <div class="track-number">
+              ${
+                isCurrentTrack && isPlaying
+                  ? '<i class="fas fa-pause playing-icon"></i>'
+                  : isCurrentTrack && !isPlaying
+                  ? '<i class="fas fa-play playing-icon"></i>'
+                  : index + 1
+              }
+            </div>
             <div class="track-image">
               <img src="${track.image_url || track.track_image_url}" 
-                   alt="${track.title || track.track_title}" />
+                   alt="${track.title || track.track_title}" 
+                   onerror="this.src='./public/img/image.png'" />
             </div>
             <div class="track-info">
               <div class="track-name">${track.title || track.track_title}</div>
@@ -52,8 +64,8 @@ export const TrackList = () => {
               <i class="fas fa-ellipsis-h"></i>
             </button>
           </div>
-        `
-          )
+        `;
+          })
           .join("")}
       </div>
     `;

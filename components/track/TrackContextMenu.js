@@ -8,7 +8,8 @@ import { showToast } from "../../utils/helpers.js";
 export const TrackContextMenu = (elements) => {
   let currentTrackId = null;
   let myPlaylists = [];
-  let currentPlaylistId = null; // ID của playlist hiện tại
+  let currentPlaylistId = null;
+  let isOwnerPlaylist = false;
 
   const menu = document.createElement("div");
   menu.className = "track-context-menu";
@@ -29,6 +30,18 @@ export const TrackContextMenu = (elements) => {
   const show = async (x, y, trackId, playlistId = null) => {
     currentTrackId = trackId;
     currentPlaylistId = playlistId;
+    isOwnerPlaylist = false;
+
+    // Kiểm tra quyền sở hữu playlist nếu có playlistId
+    if (currentPlaylistId) {
+      try {
+        const playlist = await playlistService.getById(currentPlaylistId);
+        isOwnerPlaylist = playlist.is_owner || false;
+      } catch (error) {
+        console.error("Error checking playlist ownership:", error);
+        isOwnerPlaylist = false;
+      }
+    }
 
     // Load my playlists
     try {
@@ -62,10 +75,10 @@ export const TrackContextMenu = (elements) => {
       }
     }
 
-    // Build menu HTML
+    // Build menu HTML - CHỈ HIỂN thị nút delete nếu là owner
     menu.innerHTML = `
     ${
-      currentPlaylistId
+      currentPlaylistId && isOwnerPlaylist
         ? `
         <div style="padding: 8px 12px; color: #b3b3b3; font-size: 11px; text-transform: uppercase; font-weight: 700;">
           Remove
@@ -87,7 +100,8 @@ export const TrackContextMenu = (elements) => {
         <div class="track-context-menu-item" data-playlist-id="${playlist.id}" 
              style="padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: 2px;">
           <img src="${playlist.image_url}" 
-               style="width: 32px; height: 32px; object-fit: cover; border-radius: 2px;" />
+               style="width: 32px; height: 32px; object-fit: cover; border-radius: 2px;" 
+               onerror="this.src='./public/img/image.png'" />
           <div style="flex: 1; overflow: hidden;">
             <div style="color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               ${playlist.name}
@@ -135,7 +149,7 @@ export const TrackContextMenu = (elements) => {
       });
     });
 
-    // Add hover effect and click handler for delete button
+    // Add hover effect and click handler for delete button (chỉ khi có)
     const deleteBtn = menu.querySelector(
       ".track-context-menu-delete-from-playlist"
     );
@@ -173,6 +187,16 @@ export const TrackContextMenu = (elements) => {
 
   const handleDeleteFromPlaylist = async () => {
     if (!currentTrackId || !currentPlaylistId) return;
+
+    // Kiểm tra lại quyền trước khi xóa
+    if (!isOwnerPlaylist) {
+      showToast(
+        "You don't have permission to remove tracks from this playlist",
+        "error"
+      );
+      hide();
+      return;
+    }
 
     try {
       await playlistService.removeTrack(currentTrackId, currentPlaylistId);

@@ -1,5 +1,5 @@
 // ============================================
-// FILE: main.js - Updated
+// FILE: main.js
 // ============================================
 
 import { AuthModal } from "./components/auth/AuthModal.js";
@@ -544,18 +544,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Handle track click to play
+      // Handle track click to play - SỬA LẠI ĐỂ TOGGLE PLAY/PAUSE
       const trackItem = e.target.closest(".track-item");
       if (trackItem && !e.target.closest(".track-menu-btn")) {
-        const index = Number(trackItem.dataset.indexSong);
+        const clickedIndex = Number(trackItem.dataset.indexSong);
         const artistId = trackItem.dataset.artistId || null;
         const currentTracks = appState.getCurrentTracks();
+        const currentIndex = appState.getCurrentIndex();
 
         if (currentTracks.length === 0) return;
 
+        // Kiểm tra nếu click vào track đang play
+        const isPlayingTrack = trackItem.classList.contains("playing");
+
+        if (isPlayingTrack && clickedIndex === currentIndex) {
+          // Toggle play/pause thay vì phát lại từ đầu
+          if (player.audio.paused) {
+            await player.safePlay();
+          } else {
+            player.safePause();
+          }
+
+          // Update icon trong track item
+          updateTrackPlayIcon(trackItem);
+          updateLargePlayButton();
+          return;
+        }
+
+        // Nếu click vào track khác, load và play track mới
         await player.loadNewPlaylist(currentTracks, artistId);
-        player.currentIndex = index;
-        appState.setCurrentIndex(index);
+        player.currentIndex = clickedIndex;
+        appState.setCurrentIndex(clickedIndex);
 
         player.loadCurrentSong();
         setTimeout(() => player.safePlay(), 200);
@@ -607,6 +626,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       })
     );
+  };
+
+  const updateTrackPlayIcon = (trackItem) => {
+    const trackNumber = trackItem.querySelector(".track-number");
+    if (!trackNumber) return;
+
+    if (player.audio.paused) {
+      // Hiển thị icon play
+      trackNumber.innerHTML = '<i class="fas fa-play playing-icon"></i>';
+    } else {
+      // Hiển thị icon pause hoặc volume
+      trackNumber.innerHTML = '<i class="fas fa-pause playing-icon"></i>';
+    }
   };
 
   const attachCardEvents = () => {

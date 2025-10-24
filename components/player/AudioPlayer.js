@@ -277,6 +277,43 @@ export const AudioPlayer = (elements) => {
     setTrackChangeCallback(callback) {
       this.onTrackChange = callback;
     },
+    updateTrackListUI() {
+      // Trigger re-render track list với trạng thái play/pause mới
+      if (this.onTrackChange) {
+        this.onTrackChange(this.currentIndex);
+      }
+    },
+
+    updateAllPlayIcons() {
+      const isPlaying = !this.audio.paused;
+
+      // Update large play button
+      const largeBtn = document.querySelector(".play-btn-large");
+      if (largeBtn) {
+        const largeIcon = largeBtn.querySelector("i");
+        if (largeIcon) {
+          if (isPlaying) {
+            largeIcon.classList.remove("fa-play");
+            largeIcon.classList.add("fa-pause");
+          } else {
+            largeIcon.classList.remove("fa-pause");
+            largeIcon.classList.add("fa-play");
+          }
+        }
+      }
+
+      // Update track item icon
+      const playingTrack = document.querySelector(
+        ".track-item.playing .track-number"
+      );
+      if (playingTrack) {
+        if (isPlaying) {
+          playingTrack.innerHTML = '<i class="fas fa-pause playing-icon"></i>';
+        } else {
+          playingTrack.innerHTML = '<i class="fas fa-play playing-icon"></i>';
+        }
+      }
+    },
 
     init() {
       this.loadFromStorage();
@@ -292,12 +329,18 @@ export const AudioPlayer = (elements) => {
         const icon = this.playBtn.querySelector("i");
         icon.classList.remove("fa-play");
         icon.classList.add("fa-pause");
+
+        // Update tất cả play icons
+        this.updateAllPlayIcons();
       });
 
       this.audio.addEventListener("pause", () => {
         const icon = this.playBtn.querySelector("i");
         icon.classList.remove("fa-pause");
         icon.classList.add("fa-play");
+
+        // Update tất cả play icons
+        this.updateAllPlayIcons();
       });
 
       this.audio.addEventListener("loadedmetadata", () => {
