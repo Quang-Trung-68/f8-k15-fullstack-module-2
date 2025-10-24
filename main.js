@@ -16,6 +16,7 @@ import { LibraryContent } from "./components/library/LibraryContent.js";
 import { LibrarySearch } from "./components/library/LibrarySearch.js";
 import { SortMenu } from "./components/library/SortMenu.js";
 import { ContextMenu } from "./components/library/ContextMenu.js";
+import { SearchDropdown } from "./components/search/SearchDropdown.js";
 
 import { appState } from "./state/appState.js";
 import { playlistAPI, artistAPI } from "./api/endpoints.js";
@@ -320,6 +321,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   sortMenu.init();
   contextMenu.init();
   playlistModal.init();
+
+  // Initialize Search Dropdown
+  const searchDropdown = SearchDropdown(elements, {
+    // Handle track click - play track
+    track: async (trackId) => {
+      await handlePlaySingleTrack(trackId);
+    },
+
+    // Handle playlist click - navigate to playlist detail
+    playlist: async (playlistId) => {
+      await renderPlaylistDetail(playlistId);
+    },
+
+    // Handle artist click - navigate to artist detail
+    artist: async (artistId) => {
+      await renderArtistDetail(artistId);
+    },
+  });
+
+  searchDropdown.init();
 
   // ============================================
   // HELPER FUNCTIONS
@@ -824,6 +845,59 @@ document.addEventListener("DOMContentLoaded", async () => {
   // SETUP EVENT LISTENERS
   // ============================================
 
+  const handlePlaySingleTrack = async (trackId) => {
+    try {
+      // Tìm track trong current tracks
+      const currentTracks = appState.getCurrentTracks();
+      const trackIndex = currentTracks.findIndex(
+        (t) => String(t.id || t.track_id) === String(trackId)
+      );
+
+      if (trackIndex !== -1) {
+        // Track đã có trong playlist hiện tại
+        const artistId = appState.getCurrentArtistId();
+        const playlistId = currentViewingPlaylistId;
+
+        player.currentIndex = trackIndex;
+        appState.setCurrentIndex(trackIndex);
+
+        // Save playing source
+        if (playlistId) {
+          appState.setCurrentPlayingSourceId(playlistId);
+          appState.setCurrentPlayingSourceType("playlist");
+        } else if (artistId) {
+          appState.setCurrentPlayingSourceId(artistId);
+          appState.setCurrentPlayingSourceType("artist");
+        }
+
+        player.loadCurrentSong();
+        await player.safePlay();
+
+        // Update UI
+        if (elements.popularSection) {
+          elements.popularSection.innerHTML = trackList.render(
+            currentTracks,
+            artistId,
+            playlistId
+          );
+          attachTrackEvents();
+        }
+
+        updateLargePlayButton();
+        updateBackButton();
+
+        showToast("Playing track", "success");
+      } else {
+        // Track không có trong playlist hiện tại
+        // Có thể fetch track từ API và play (nếu có endpoint)
+        showToast("Track not in current playlist", "info");
+      }
+    } catch (error) {
+      console.error("Error playing track:", error);
+      showToast("Failed to play track", "error");
+    }
+  };
+
   const setupEventListeners = () => {
     if (eventListenersAdded) return;
 
@@ -883,41 +957,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         attachLibraryEvents();
       })
     );
-
-    // Search in main content - KHÔNG CẦN AUTH
-    elements.searchInput?.addEventListener("input", async (e) => {
-      const searchValue = e.target.value.toLowerCase().trim();
-
-      if (!searchValue) {
-        await initHomePage();
-        return;
-      }
-
-      try {
-        const [
-          {
-            data: { playlists },
-          },
-          {
-            data: { artists },
-          },
-        ] = await Promise.all([playlistAPI.getAll(), artistAPI.getAll()]);
-
-        const filteredPlaylists = playlists.filter((p) =>
-          p.name.toLowerCase().includes(searchValue)
-        );
-        const filteredArtists = artists.filter((a) =>
-          a.name.toLowerCase().includes(searchValue)
-        );
-
-        elements.hitsGrid.innerHTML = playlistGrid.render(filteredPlaylists);
-        elements.artistsGrid.innerHTML = artistGrid.render(filteredArtists);
-
-        attachCardEvents();
-      } catch (error) {
-        console.error("Search error:", error);
-      }
-    });
 
     // Create playlist - REQUIRE AUTH
     elements.createPlaylistBtn?.addEventListener(

@@ -1,17 +1,17 @@
-import { searchApi } from "../api/endpoints";
+import { searchApi } from "../api/endpoints.js";
 
 export const searchService = {
   searchTracks: async (searchTerm) => {
-    const response = await searchApi.searchTracks;
-    return response.data.tracks;
+    const response = await searchApi.searchTracks(searchTerm);
+    return response.data.tracks || [];
   },
   searchPlaylists: async (searchTerm) => {
-    const response = await searchApi.searchPlaylists;
-    return response.data.playlists;
+    const response = await searchApi.searchPlaylists(searchTerm);
+    return response.data.playlists || [];
   },
   searchArtists: async (searchTerm) => {
-    const response = await searchApi.searchArtists;
-    return response.data.artists;
+    const response = await searchApi.searchArtists(searchTerm);
+    return response.data.artists || [];
   },
 };
 
