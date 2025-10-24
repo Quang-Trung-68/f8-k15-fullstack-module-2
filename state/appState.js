@@ -31,6 +31,14 @@ export const appState = {
   getCurrentArtistId: () => storage.get("currentArtistId"),
   setCurrentArtistId: (id) => storage.set("currentArtistId", id),
 
+  // NEW: Track playing source (playlist or artist ID)
+  getCurrentPlayingSourceId: () => storage.get("currentPlayingSourceId"),
+  setCurrentPlayingSourceId: (id) => storage.set("currentPlayingSourceId", id),
+
+  getCurrentPlayingSourceType: () => storage.get("currentPlayingSourceType"), // 'playlist' or 'artist'
+  setCurrentPlayingSourceType: (type) =>
+    storage.set("currentPlayingSourceType", type),
+
   // Auth tokens
   getAccessToken: () => storage.get("accessToken"),
   setAccessToken: (token) => storage.set("accessToken", token),
@@ -51,5 +59,7 @@ export const appState = {
     storage.remove("currentTracks");
     storage.remove("currentArtistId");
     storage.remove("currentIndex");
+    storage.remove("currentPlayingSourceId");
+    storage.remove("currentPlayingSourceType");
   },
 };

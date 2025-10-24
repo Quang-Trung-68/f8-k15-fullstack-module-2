@@ -260,6 +260,36 @@
   pointer-events: none;
 }
 
+/* Back button - Similar to home button */
+.back-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  margin-right: var(--spacing-sm);
+}
+
+.back-btn:hover {
+  background-color: var(--bg-hover);
+  transform: scale(1.04);
+}
+
+.back-btn i {
+  font-size: 20px;
+}
+
+/* Update search-box to accommodate back button */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 /* Library items */
 .library-item {
   display: flex;

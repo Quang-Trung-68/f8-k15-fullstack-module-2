@@ -1,12 +1,12 @@
 // ============================================
-// FILE: components/track/TrackList.js
+// FILE: components/track/TrackList.js - UPDATED
 // ============================================
 
 import { formatSeconds } from "../../utils/helpers.js";
 import { appState } from "../../state/appState.js";
 
 export const TrackList = () => {
-  const render = (tracks, artistId = null) => {
+  const render = (tracks, artistId = null, playlistId = null) => {
     if (!tracks || tracks.length === 0) {
       return `
         <h2 class="section-title">Popular</h2>
@@ -15,19 +15,32 @@ export const TrackList = () => {
     }
 
     const currentIndex = appState.getCurrentIndex();
+    const currentPlayingSourceId = appState.getCurrentPlayingSourceId();
+    const currentPlayingSourceType = appState.getCurrentPlayingSourceType();
     const isPlaying = window.player && !window.player.audio.paused;
+
+    // Determine if we're viewing the currently playing source
+    const isCurrentSource =
+      (playlistId &&
+        currentPlayingSourceType === "playlist" &&
+        String(currentPlayingSourceId) === String(playlistId)) ||
+      (artistId &&
+        currentPlayingSourceType === "artist" &&
+        String(currentPlayingSourceId) === String(artistId));
 
     return `
       <h2 class="section-title">Popular</h2>
       <div class="track-list">
         ${tracks
           .map((track, index) => {
-            const isCurrentTrack = index === currentIndex;
+            // Only highlight if we're in the same source
+            const isCurrentTrack = isCurrentSource && index === currentIndex;
 
             return `
           <div 
             title="${track.title || track.track_title}" 
             data-artist-id="${artistId || ""}" 
+            data-playlist-id="${playlistId || ""}"
             data-index-song="${index}" 
             data-id="${track.track_id || track.id}" 
             class="track-item ${isCurrentTrack ? "playing" : ""}"

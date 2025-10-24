@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Search and navigation
     searchInput: document.querySelector(".search-input"),
     logoIcon: document.querySelector(".fa-spotify"),
+    backBtn: document.querySelector(".back-btn"),
     homeButton: document.querySelector(".home-btn"),
     menuBtn: document.getElementById("menuBtn"),
     sidebar: document.querySelector(".sidebar"),
@@ -91,6 +92,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Player
     addBtn: document.querySelector(".add-btn"),
+  };
+
+  // ============================================
+  // NEW: Update back button visibility
+  // ============================================
+  const updateBackButton = () => {
+    if (!elements.backBtn) return;
+
+    const playingSourceId = appState.getCurrentPlayingSourceId();
+    const playingSourceType = appState.getCurrentPlayingSourceType();
+
+    // Check if we have a playing source
+    if (!playingSourceId || !playingSourceType) {
+      elements.backBtn.style.display = "none";
+      return;
+    }
+
+    // Check if we're already at the playing source
+    const isAtPlayingSource =
+      (playingSourceType === "playlist" &&
+        String(currentViewingPlaylistId) === String(playingSourceId)) ||
+      (playingSourceType === "artist" &&
+        String(appState.getCurrentArtistId()) === String(playingSourceId));
+
+    elements.backBtn.style.display = isAtPlayingSource ? "none" : "block";
   };
 
   // ============================================
@@ -108,18 +134,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   const player = AudioPlayer(elements);
   window.player = player;
 
-  // Set callback for when track changes
+  // Make updateBackButton globally accessible for AudioPlayer
+  window.updateBackButton = updateBackButton;
+
+  // Update player.setTrackChangeCallback to include back button update
   player.setTrackChangeCallback((newIndex) => {
     const currentTracks = appState.getCurrentTracks();
     const artistId = appState.getCurrentArtistId();
 
     if (elements.popularSection && currentTracks.length > 0) {
+      // Determine if we're viewing playlist or artist
+      const playlistId = currentViewingPlaylistId;
+
       elements.popularSection.innerHTML = trackList.render(
         currentTracks,
-        artistId
+        artistId,
+        playlistId
       );
       attachTrackEvents();
     }
+
+    // Update back button when track changes
+    updateBackButton();
   });
 
   // Hàm cập nhật UI dựa vào auth status
@@ -338,6 +374,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     elements.createPlaylistBtn.style.display = "block";
     currentViewingPlaylistId = null;
     removeAllLibraryActiveClasses();
+    updateBackButton(); // NEW
   };
 
   const removeAllLibraryActiveClasses = () => {
@@ -371,12 +408,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       elements.artistHero.innerHTML = playlistHero.render(playlist);
 
       const tracks = await playlistService.getTracks(playlist.id);
-      elements.popularSection.innerHTML = trackList.render(tracks, null);
+      elements.popularSection.innerHTML = trackList.render(
+        tracks,
+        null,
+        playlistId
+      ); // Pass playlistId
 
       appState.setCurrentTracks(tracks);
       appState.setCurrentArtistId(null);
 
       setActiveLibraryItem(playlistId, "playlist");
+
+      // Update back button visibility
+      updateBackButton();
 
       attachHeroEvents();
       attachTrackEvents();
@@ -395,12 +439,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       elements.artistHero.innerHTML = artistHero.render(artist);
 
       const tracks = await artistService.getPopularTracks(artist.id);
-      elements.popularSection.innerHTML = trackList.render(tracks, artist.id);
+      elements.popularSection.innerHTML = trackList.render(
+        tracks,
+        artist.id,
+        null
+      ); // Pass artistId
 
       appState.setCurrentArtistId(artist.id);
       appState.setCurrentTracks(tracks);
 
       setActiveLibraryItem(artistId, "artist");
+
+      // Update back button visibility
+      updateBackButton();
 
       attachHeroEvents();
       attachTrackEvents();
@@ -617,6 +668,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (trackItem && !e.target.closest(".track-menu-btn")) {
         const clickedIndex = Number(trackItem.dataset.indexSong);
         const artistId = trackItem.dataset.artistId || null;
+        const playlistId = trackItem.dataset.playlistId || null; // NEW
         const currentTracks = appState.getCurrentTracks();
         const currentIndex = appState.getCurrentIndex();
 
@@ -640,16 +692,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         player.currentIndex = clickedIndex;
         appState.setCurrentIndex(clickedIndex);
 
+        // NEW: Save playing source
+        if (playlistId) {
+          appState.setCurrentPlayingSourceId(playlistId);
+          appState.setCurrentPlayingSourceType("playlist");
+        } else if (artistId) {
+          appState.setCurrentPlayingSourceId(artistId);
+          appState.setCurrentPlayingSourceType("artist");
+        }
+
         player.loadCurrentSong();
         setTimeout(() => player.safePlay(), 200);
 
         elements.popularSection.innerHTML = trackList.render(
           currentTracks,
-          artistId
+          artistId,
+          playlistId
         );
         attachTrackEvents();
 
         updateLargePlayButton();
+        updateBackButton();
       }
     });
 
@@ -764,6 +827,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const setupEventListeners = () => {
     if (eventListenersAdded) return;
 
+    // NEW: Back button handler
+    elements.backBtn?.addEventListener("click", async () => {
+      const playingSourceId = appState.getCurrentPlayingSourceId();
+      const playingSourceType = appState.getCurrentPlayingSourceType();
+
+      if (!playingSourceId || !playingSourceType) return;
+
+      if (playingSourceType === "playlist") {
+        await renderPlaylistDetail(playingSourceId);
+      } else if (playingSourceType === "artist") {
+        await renderArtistDetail(playingSourceId);
+      }
+    });
+
     // Mobile menu
     elements.closeMenuBtn?.addEventListener("click", () => {
       elements.sidebar.classList.add("hide");
@@ -775,11 +852,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       elements.sidebar.classList.toggle("show");
     });
 
-    // Home navigation
+    // Update home button and logo to reset back button
     [elements.logoIcon, elements.homeButton].forEach((el) => {
       el?.addEventListener("click", async () => {
         resetToHome();
         await initHomePage();
+        updateBackButton(); // NEW
       });
     });
 
@@ -936,7 +1014,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       await trackContextMenu.show(rect.left, rect.top - 10, trackId, null);
     });
 
-    // Large play button - KHÔNG CẦN AUTH
+    // Update large play button to save source
     elements.playBtnLarge?.addEventListener("click", async (e) => {
       e.preventDefault();
 
@@ -958,6 +1036,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
         player.currentIndex = 0;
         appState.setCurrentIndex(0);
+
+        // NEW: Save playing source
+        if (currentViewingPlaylistId) {
+          appState.setCurrentPlayingSourceId(currentViewingPlaylistId);
+          appState.setCurrentPlayingSourceType("playlist");
+        } else if (appState.getCurrentArtistId()) {
+          appState.setCurrentPlayingSourceId(appState.getCurrentArtistId());
+          appState.setCurrentPlayingSourceType("artist");
+        }
+
         player.loadCurrentSong();
 
         icon.classList.remove("fa-play");
@@ -967,9 +1055,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         elements.popularSection.innerHTML = trackList.render(
           currentTracks,
-          appState.getCurrentArtistId()
+          appState.getCurrentArtistId(),
+          currentViewingPlaylistId
         );
         attachTrackEvents();
+        updateBackButton(); // NEW
       } else {
         if (player.audio.paused) {
           await player.safePlay();
@@ -1034,6 +1124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       setupEventListeners();
       updatePlayerUIBasedOnAuth();
+      updateBackButton(); // NEW
     } catch (error) {
       console.error("Init error:", error);
       showToast("Failed to initialize app", "error");
