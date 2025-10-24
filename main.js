@@ -324,9 +324,47 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initialize Search Dropdown
   const searchDropdown = SearchDropdown(elements, {
-    // Handle track click - play track
+    // Handle track click - play track immediately
     track: async (trackId) => {
-      await handlePlaySingleTrack(trackId);
+      try {
+        // Fetch track data
+        const trackData = await trackService.getById(trackId);
+
+        // Create single track playlist
+        const singleTrackPlaylist = [trackData];
+
+        // Stop current playback first
+        player.safePause();
+        player.audio.src = "";
+
+        // Load new track
+        await player.loadNewPlaylist(singleTrackPlaylist, trackData.artist_id);
+        player.currentIndex = 0;
+        appState.setCurrentIndex(0);
+
+        // Clear playing source
+        appState.setCurrentPlayingSourceId(null);
+        appState.setCurrentPlayingSourceType(null);
+
+        player.loadCurrentSong();
+
+        // Force play after short delay to ensure audio is loaded
+        setTimeout(async () => {
+          try {
+            player.isTransitioning = false; // Reset transitioning flag
+            await player.audio.play();
+            showToast("Playing track", "success");
+          } catch (error) {
+            console.error("Play error:", error);
+            showToast("Failed to play track", "error");
+          }
+        }, 300);
+
+        updateBackButton();
+      } catch (error) {
+        console.error("Error playing track:", error);
+        showToast("Failed to play track", "error");
+      }
     },
 
     // Handle playlist click - navigate to playlist detail
